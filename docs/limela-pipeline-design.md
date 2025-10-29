@@ -102,7 +102,7 @@ systems, each with unique requirements.
     accurate measure of semantic similarity between any two emails. This
     necessitates a custom distance metric that goes beyond simple vector
     similarity, which the ColBERT component of the meta-embedding is designed
-    to provide.[^3]
+    to provide.[^2]
 
 - **Event-Centric Knowledge Graph:** This system models the email data as a
     network of entities and their interactions. An "event" is a central
@@ -193,7 +193,7 @@ the data plane (payload movement).
         **Unix Domain Sockets (UDS)** can be used to bypass the network stack
         entirely, offering a high-throughput, low-latency communication
         channel. The `tokio::net::UnixSocket` API provides the necessary
-        primitives for this.[^5]
+        primitives for this.[^3]
 
 ### Inter-Service Communication (IPC) and Message Contracts
 
@@ -205,7 +205,7 @@ ensuring data integrity between services.
 The default transport mechanism for all inter-stage communication is gRPC. The
 combination of `tonic` for the gRPC implementation and `prost` for Protobuf
 code generation provides a reliable, high-performance baseline that is easy to
-operate and profile.[^7] All services will expose bidirectional streaming
+operate and profile.[^4] All services will expose bidirectional streaming
 endpoints to naturally handle back-pressure via HTTP/2 flow control.
 
 #### Surgical High-Performance Transport: Cap'n Proto
@@ -213,9 +213,9 @@ endpoints to naturally handle back-pressure via HTTP/2 flow control.
 For specific performance-critical "hot loops," **Cap'n Proto** offers a
 compelling alternative. Its zero-copy serialization format avoids the overhead
 of encoding and decoding data, making it exceptionally fast for in-memory and
-IPC scenarios.[^9] Its capability-based RPC system is particularly valuable for
+IPC scenarios.[^5] Its capability-based RPC system is particularly valuable for
 advanced patterns where one service needs to grant another service access to a
-resource (a "sink").[^11]
+resource (a "sink").[^6]
 
 Potential use cases for `capnp-rpc` in this pipeline include:
 
@@ -348,7 +348,7 @@ To build a resilient system where retries are safe, every stage must be
 idempotent. This is achieved by generating a deterministic `EmailId` for each
 unique email. The recommended approach is to use the **BLAKE3** cryptographic
 hash function, provided by the `blake3` crate, on a concatenation of stable
-email headers (`Message-ID`, `Date`, `From`, `Subject`).[^13] Downstream
+email headers (`Message-ID`, `Date`, `From`, `Subject`).[^7] Downstream
 services will then use this `EmailId` as a primary key for `UPSERT` operations,
 ensuring that reprocessing the same email does not create duplicate entries.
 
@@ -429,7 +429,7 @@ semantic structure of the text, such as paragraphs, lists, and headings.
 This conversion presents a critical trade-off between rendering fidelity and
 processing performance. The Rust ecosystem offers several options with
 different characteristics. A detailed comparison of available crates reveals a
-clear spectrum.[^15]
+clear spectrum.[^8]
 
 - **High-Fidelity Option:** The `html2text` crate uses `html5ever`, the
     browser-grade HTML parsing engine from Mozilla's Servo project. This
@@ -439,7 +439,7 @@ clear spectrum.[^15]
 
 - **High-Performance Option:** The `nanohtml2text` crate is a zero-dependency
     alternative designed for speed. Benchmarks show it can be significantly
-    faster and more memory-efficient than `html5ever`-based parsers.[^15]
+    faster and more memory-efficient than `html5ever`-based parsers.[^8]
     However, its simpler parsing logic may be less resilient to complex or
     non-standard HTML, potentially leading to lower-quality text output.
 
@@ -478,7 +478,7 @@ The cleaning module will apply a sequence of regular expressions to remove:
 To optimize performance, all regular expressions will be compiled once at
 application startup and stored for reuse. The `std::sync::LazyLock` pattern is
 the recommended approach for achieving this, as it ensures thread-safe,
-on-demand compilation without cluttering initialization logic.[^16]
+on-demand compilation without cluttering initialization logic.[^9]
 
 It is critical to recognize that this cleaning process is inherently heuristic.
 Email formats vary immensely, and no static set of rules will ever be perfect.
@@ -599,7 +599,7 @@ and flexible approach.
 - **Incremental and Scalable:** Email data arrives in a continuous stream.
     FISHDBC is an incremental algorithm that can add new data points to an
     existing clustering structure without needing to reprocess the entire
-    dataset.[^17] It achieves scalability by using an HNSW (Hierarchical
+    dataset.[^10] It achieves scalability by using an HNSW (Hierarchical
     Navigable Small World) graph for efficient approximate nearest neighbor
     search, avoiding the prohibitive $O(n^2)$ complexity of naive density-based
     methods.
@@ -730,7 +730,7 @@ custom flags), a feature defined in RFC 3501.
 
 - **Gmail-Specific Labels:** When the IMAP server is identified as Gmail (by
     checking for the `X-GM-EXT-1` capability), the system can additionally
-    apply a native Gmail label using the `X-GM-LABELS` extension.[^19] This
+    apply a native Gmail label using the `X-GM-LABELS` extension.[^11] This
     provides a more user-friendly experience within the Gmail interface. The
     command would be `STORE <uid> +X-GM-LABELS (Limela/Cluster/12345)`.
 
@@ -745,20 +745,20 @@ The IMAP connector must operate efficiently and respond to changes in near
 real-time.
 
 - **Push Notifications (`IDLE`):** To discover new mail without constant
-    polling, the IMAP ingestor will use the `IDLE` command (RFC 2177).[^20] This
+    polling, the IMAP ingestor will use the `IDLE` command (RFC 2177).[^12] This
     allows the server to push notifications to the client as soon as new
     messages arrive, triggering the processing pipeline.
 
 - **Efficient Sync (`QRESYNC`):** For synchronizing message state (including
     custom flags), the connector will leverage the `QRESYNC` extension (RFC
-    7162), which obsoletes the older `CONDSTORE` extension.[^22] This allows the
+    7162), which obsoletes the older `CONDSTORE` extension.[^13] This allows the
     client to fetch only the changes that have occurred since its last known
     state, dramatically reducing bandwidth and round-trips.
 
 ### Implementation with `async-imap`
 
 The `async-imap` crate is the recommended choice for building the IMAP
-connector service.[^24] The "IMAP writer" component will consume
+connector service.[^14] The "IMAP writer" component will consume
 `ClusterAssignment` messages from the pipeline, connect to the appropriate IMAP
 server, and issue a `UID STORE <uid> +FLAGS.SILENT (LIMELA.C12345)` command to
 apply the cluster tag without generating unnecessary server responses.
@@ -787,10 +787,10 @@ streaming workload. Instead, a minimal, bespoke scheduler or "thin coordinator"
 is recommended.
 
 - **DAG Modeling with `daggy`:** The pipeline's structure will be defined and
-    validated using the `daggy` crate.[^25] As a wrapper around
+    validated using the `daggy` crate.[^15] As a wrapper around
     `petgraph`, `daggy` provides a convenient API for building graph structures
     while enforcing acyclicity at insertion time, which prevents
-    misconfiguration.[^25]
+    misconfiguration.[^15]
 
 - **Execution:** The thin coordinator will use the underlying `petgraph`
     graph from `daggy` to perform a topological sort
@@ -830,7 +830,7 @@ will be used to:
 
 All machine learning systems deployed in real-world environments are
 susceptible to concept drift, where the statistical properties of the input
-data change over time, degrading model performance.[^18] To make the pipeline
+data change over time, degrading model performance.[^16] To make the pipeline
 proactively maintainable, it will incorporate a drift detection module based on
 the ADWIN (ADaptive WINdowing) algorithm.
 
@@ -862,25 +862,25 @@ or the embedding models---may require review and updating.
 A phased approach is recommended to manage complexity and deliver value
 incrementally.
 
-1. **Phase 1: Core Pipeline Harness.** Implement the end-to-end data flow with
+1. **Phase[^1]: Core Pipeline Harness.** Implement the end-to-end data flow with
     mock components for each stage. Define the Protobuf schemas and gRPC
-    services using `prost-build` and `tonic-build`.[^7] Set up the `rayon`-based
+    services using `prost-build` and `tonic-build`.[^4] Set up the `rayon`-based
     parallel processing framework within each service.
 
-2. **Phase 2: Normalization and Purification.** Integrate the selected email
+2. **Phase[^17]: Normalization and Purification.** Integrate the selected email
     parsing (`mail-parser`) and HTML conversion (`html2text`) crates. Develop
     and rigorously test the initial library of cleaning regular expressions.
 
-3. **Phase 3: Meta-Embedding Integration.** Integrate a pre-trained SBERT
+3. **Phase[^2]: Meta-Embedding Integration.** Integrate a pre-trained SBERT
     model using `rust-bert`. Implement the custom ColBERT logic for extracting
     token-level embeddings and writing them to a blob store (e.g., MinIO).
 
-4. **Phase 4: Clustering and KG Integration.** Connect the pipeline to a
+4. **Phase[^18]: Clustering and KG Integration.** Connect the pipeline to a
     FISHDBC instance. Implement the hybrid SBERT/ColBERT distance metric,
     including the local ColBERT scorer service that reads embeddings from the
     blob store. Develop the NER and relationship extraction modules.
 
-5. **Phase 5: Operationalization.** Implement the ADWIN-based drift detection
+5. **Phase[^3]: Operationalization.** Implement the ADWIN-based drift detection
     sidecar service. Instrument all services with OpenTelemetry tracing. Deploy
     the complete pipeline to a staging environment for end-to-end testing.
 
@@ -910,8 +910,8 @@ component of the pipeline.
 | **Memory-Mapped Files**     | `memmap2`                                                 | A cross-platform library for using memory-mapped files, ideal for zero-copy access to ColBERT embeddings by a co-located scorer service.                            |
 | **Idempotency Hashing**     | `blake3`                                                  | An extremely fast and secure cryptographic hash function, ideal for generating deterministic `EmailId`s.                                                            |
 | **Observability**           | `opentelemetry`, `tracing`, `tonic-tracing-opentelemetry` | The standard ecosystem for implementing distributed tracing and metrics.                                                                                            |
-| **DAG Modeling**            | `daggy`                                                   | A safe and convenient wrapper around `petgraph` for defining and validating the pipeline's DAG structure. [^25]                                                     |
-| **IMAP Connector**          | `async-imap`                                              | A mature, asynchronous client for interacting with IMAP servers, supporting extensions like `IDLE` and `QRESYNC`. [^24]                                             |
+| **DAG Modeling**            | `daggy`                                                   | A safe and convenient wrapper around `petgraph` for defining and validating the pipeline's DAG structure. [^15]                                                     |
+| **IMAP Connector**          | `async-imap`                                              | A mature, asynchronous client for interacting with IMAP servers, supporting extensions like `IDLE` and `QRESYNC`. [^14]                                             |
 | **Clustering**              | `flexible-clustering` (Python) via PyO3, or custom impl.  | The reference implementation for FISHDBC is in Python. A language interop layer is the fastest path to integration.                                                 |
 | **Drift Detection**         | Custom implementation                                     | A mature Rust crate for ADWIN is not readily available. The algorithm must be implemented based on the specifications in the relevant academic papers.              |
 
@@ -920,101 +920,62 @@ component of the pipeline.
 [^1]: rayon-rs/rayon - A data parallelism library for Rust - GitHub, accessed
       on 22 October 2025, <https://github.com/rayon-rs/rayon>
 
-[^2]: Parallel Processing in Rust - Medium, accessed on 22 October 2025,
-      <https://kartik-chauhan.medium.com/parallel-processing-in-rust-d8a7f4a6e32f>
-
-[^3]: (PDF) FISHDBC: Flexible, Incremental, Scalable, Hierarchical
+[^2]: (PDF) FISHDBC: Flexible, Incremental, Scalable, Hierarchical
       Density-Based Clustering for Arbitrary Data and Distance - ResearchGate,
       accessed on 22 October 2025,
       <https://www.researchgate.net/publication/336602540_FISHDBC_Flexible_Incremental_Scalable_Hierarchical_Density-Based_Clustering_for_Arbitrary_Data_and_Distance>
 
-[^4]: matteodellamico/flexible-clustering: Clustering for arbitrary data and
-      dissimilarity function, accessed on 22 October 2025,
-      <https://github.com/matteodellamico/flexible-clustering>
-
-[^5]: mime - Keywords - crates.io: Rust Package Registry, accessed on 22
+[^3]: mime - Keywords - crates.io: Rust Package Registry, accessed on 22
       October 2025, <https://crates.io/keywords/mime>
 
-[^6]: mail-parser - Rust Package Registry - Crates.io, accessed on 22 October
-      2025, <https://crates.io/crates/mail-parser>
-
-[^7]: Comparing 13 Rust Crates for Extracting Text from HTML - Evan Schwartz,
+[^4]: Comparing 13 Rust Crates for Extracting Text from HTML - Evan Schwartz,
       accessed on 22 October 2025,
       <https://emschwartz.me/comparing-13-rust-crates-for-extracting-text-from-html/>
 
-[^8]: html2text - crates.io: Rust Package Registry, accessed on 22 October
-      2025, <https://crates.io/crates/html2text>
-
-[^9]: html2text - crates.io: Rust Package Registry, accessed on 22 October
+[^5]: html2text - crates.io: Rust Package Registry, accessed on 22 October
       2025, <https://crates.io/crates/html2text/dependencies>
 
-[^10]: nanohtml2text --- Rust utility // Lib.rs, accessed on 22 October 2025,
-       <https://lib.rs/crates/nanohtml2text>
-
-[^11]: regex - crates.io: Rust Package Registry, accessed on 22 October 2025,
+[^6]: regex - crates.io: Rust Package Registry, accessed on 22 October 2025,
        <https://crates.io/crates/regex>
 
-[^12]: regex - Rust - Docs.rs, accessed on 22 October 2025,
-       <https://docs.rs/regex/latest/regex/>
-
-[^13]: Decoding Sentence-BERT | Continuum Labs, accessed on 22 October 2025,
+[^7]: Decoding Sentence-BERT | Continuum Labs, accessed on 22 October 2025,
        <https://training.continuumlabs.ai/knowledge/vector-databases/decoding-sentence-bert>
 
-[^14]: Understanding ColBERT: What is New Comparing with Normal Semantic Search
-       - Medium, accessed on 22 October 2025,
-       <https://medium.com/@liu.peng.uppsala/understanding-colbert-what-is-new-comparing-with-normal-semantic-search-6dc285311a18>
-
-[^15]: ColBERT --- A Late Interaction Model For Semantic Search | by Zachariah
+[^8]: ColBERT --- A Late Interaction Model For Semantic Search | by Zachariah
        Zhang | Medium, accessed on 22 October 2025,
        <https://medium.com/@zz1409/colbert-a-late-interaction-model-for-semantic-search-da00f052d30e>
 
-[^16]: Can Semantic Search be more interpretable? COLBERT, SPLADE might be the
+[^9]: Can Semantic Search be more interpretable? COLBERT, SPLADE might be the
        answer but is it enough?, accessed on 22 October 2025,
        <http://musingsaboutlibrarianship.blogspot.com/2024/06/can-semantic-search-be-more.html>
 
-[^17]: rust-bert - Crates.io, accessed on 22 October 2025,
+[^10]: rust-bert - Crates.io, accessed on 22 October 2025,
        <https://crates.io/crates/rust-bert/reverse_dependencies>
 
-[^18]: rust\_bert::pipelines - Rust - Docs.rs, accessed on 22 October 2025,
-       <https://docs.rs/rust-bert/latest/rust_bert/pipelines/index.html>
-
-[^19]: cpcdoy/rust-sbert: Rust port of sentence-transformers
+[^11]: cpcdoy/rust-sbert: Rust port of sentence-transformers
        (https://github.com/UKPLab/sentence-transformers) - GitHub, accessed on
        22 October 2025, <https://github.com/cpcdoy/rust-sbert>
 
-[^20]: [1910.07283] FISHDBC: Flexible, Incremental, Scalable, Hierarchical
+[^12]: [1910.07283] FISHDBC: Flexible, Incremental, Scalable, Hierarchical
        Density-Based Clustering for Arbitrary Data and Distance - arXiv,
        accessed on 22 October 2025, <https://arxiv.org/abs/1910.07283>
 
-[^21]: A Guide to the DBSCAN Clustering Algorithm - DataCamp, accessed on 22
-       October 2025,
-       <https://www.datacamp.com/tutorial/dbscan-clustering-algorithm>
-
-[^22]: Data Parallelism - Rust Cookbook, accessed on 22 October 2025,
+[^13]: Data Parallelism - Rust Cookbook, accessed on 22 October 2025,
        <https://rust-lang-nursery.github.io/rust-cookbook/concurrency/parallel.html>
 
-[^23]: parallel\_stream - Rust - Docs.rs, accessed on 22 October 2025,
-       <https://docs.rs/parallel-stream>
-
-[^24]: Dynamic Serialization with Protobuf and Embedded Rust - A Calustra- Eloy
+[^14]: Dynamic Serialization with Protobuf and Embedded Rust - A Calustra- Eloy
        Coto, accessed on 22 October 2025,
        <https://acalustra.com/dynamic-serialization-with-protobuf-on-embedded-rust.html>
 
-[^25]: Rust Generated Code Guide | Protocol Buffers Documentation, accessed on
+[^15]: Rust Generated Code Guide | Protocol Buffers Documentation, accessed on
        22 October 2025, <https://protobuf.dev/reference/rust/rust-generated/>
 
-[^26]: An Online, Adaptive and Unsupervised Regression Framework with Drift
-       Detection for Label Scarcity Contexts - arXiv, accessed on 22 October
-       2025, <https://arxiv.org/html/2312.07682v1>
+[^16]: rust\_bert::pipelines - Rust - Docs.rs, accessed on 22 October 2025,
+       <https://docs.rs/rust-bert/latest/rust_bert/pipelines/index.html>
 
-[^27]: Scalable Detection of Concept Drifts on Data Streams with Parallel
-       Adaptive Windowing, accessed on 22 October 2025,
-       <https://www.dfki.de/fileadmin/user_upload/import/9720_grulich-Scalable-Detection-of-Concept-Drifts-on-Data-Streams-with-Parallel-Adaptive-Windowing.pdf>
+[^17]: Parallel Processing in Rust - Medium, accessed on 22 October 2025,
+      <https://kartik-chauhan.medium.com/parallel-processing-in-rust-d8a7f4a6e32f>
 
-[^28]: skmultiflow.drift\_detection.ADWIN - scikit-multiflow's documentation! -
-       Read the Docs, accessed on 22 October 2025,
-       <https://scikit-multiflow.readthedocs.io/en/stable/api/generated/skmultiflow.drift_detection.ADWIN.html>
-
-[^29]: Automated Data Quality Monitoring with ADWIN2 - Jefferson Lab Indico,
-       accessed on 22 October 2025,
-       <https://indico.jlab.org/event/419/contributions/7651/attachments/6355/8425/Farhat-ADWIN-20210113.pdf>
+[^18]: matteodellamico/flexible-clustering: Clustering for arbitrary data and
+      dissimilarity function, accessed on 22 October 2025,
+      <https://github.com/matteodellamico/flexible-clustering>
