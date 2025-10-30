@@ -75,10 +75,11 @@ The high-level data flow is as follows:
         and the ColBERT reference is used for high-precision scoring. This
         stage produces a `ClusterAssignment` message.
 
-    - **Knowledge Graph Ingestion:** The purified text, metadata, and the
-        final `ClusterAssignment` are processed to extract entities and
-        relationships, which are then emitted as a stream of `KgTriple`
-        messages for ingestion into a graph database.
+    - **Knowledge graph ingestion:** The purified metadata and the final
+        `ClusterAssignment` are reduced to structural facts (no bodies) and
+        emitted as `KgTriple` messages. These triples feed the `limela-kg`
+        service, which persists them in tenant-scoped Oxigraph stores and
+        forwards each delta to the Telephone inference engine.
 
 5. **IMAP Write-Back (Stage 6):** The `ClusterAssignment` message is consumed
     by an IMAP writer service, which connects to the source mail server and
@@ -104,13 +105,18 @@ systems, each with unique requirements.
     similarity, which the ColBERT component of the meta-embedding is designed
     to provide.[^2]
 
-- **Event-Centric Knowledge Graph:** This system models the email data as a
+- **Event-centric knowledge graph:** This system models the email data as a
     network of entities and their interactions. An "event" is a central
     concept, represented by a set of relationships connecting entities, such as
-    "Person A *emailed* Person B *about* Project X *on* Date Y." The KG
-    requires the pipeline to supply not just raw text but also extracted,
-    structured information: identified entities, resolved conversation threads
-    (from email headers), and thematic context (from cluster assignments).
+    "Person A *emailed* Person B *about* Project X *on* Date Y." The knowledge
+    graph now stores only headers and structural metadata, including sender and
+    recipient nodes, timestamps, thread relationships, cluster links, and an
+    encrypted pointer to each email's embeddings held in the external embedding
+    store. By omitting bodies, we minimize sensitive data exposure whilst still
+    enabling semantic workflows via the embeddings. The pipeline must therefore
+    supply high-fidelity metadata, thread context, and cluster assignments for
+    ingestion, and provide a stream of well-formed triple updates so the graph
+    can stay current for downstream reasoning.
 
 ## Project Organization and Monorepo Structure
 
@@ -137,8 +143,12 @@ management, the entire system will be organized within a single Cargo workspace
             for fetching new mail and writing back cluster tags. Uses the
             `async-imap` crate.
 
-    - `limela-normalise`,`limela-purify`,`limela-embed`,`limela-cluster`,`limela-kg`:
+    - `limela-normalise`, `limela-purify`, `limela-embed`, `limela-cluster`:
             Individual binaries for each pipeline stage.
+
+    - `limela-kg`: Tenant-scoped knowledge graph service built around the
+            Oxigraph triple store. Provides an internal SPARQL endpoint and
+            streams triple deltas to the Telephone inference engine.
 
     - `limela-coordinator`: The thin scheduler that models the pipeline
             using `daggy` and executes the dataflow.
@@ -655,57 +665,91 @@ downstream to the knowledge graph.
 
 ## Stage 5: Structuring Intelligence for the Event-Centric Knowledge Graph
 
-### From Clusters to Structured Events
+### Minimal event modelling in v0
 
-The final stage of the pipeline translates the semi-structured outputs of the
-clustering engine into a fully structured, queryable knowledge graph. A cluster
-identified by FISHDBC represents a latent topic or a coherent conversation; the
-goal of this stage is to make the components of that event explicit.
+Stage 5 turns the clustering output and email metadata into stable graph facts
+that describe each email as an event. FISHDBC establishes topic cohesion,
+whilst the pipeline curates a minimal but rich record for the knowledge graph:
 
-The proposed workflow is as follows:
+1. Combine the `ClusterAssignment` with the canonical header fields
+    (`Message-ID`, `Date`, `From`, `To`, `Cc`, `References`) produced earlier in
+    the pipeline.
 
-1. For each stable cluster, the collection of emails within it is treated as a
-    single, topic-specific corpus.
+2. Build an `Email` node per message, attach the deterministic `EmailId`, and
+    store an encrypted pointer to the ColBERT shards so downstream semantic
+    systems can resolve the content without copying bodies into the graph.
 
-2. Named Entity Recognition (NER) is performed on this corpus to extract key
-    entities such as `PERSON`, `ORGANIZATION`, `DATE`, `LOCATION`, and project
-    codenames. The `rust-bert` library provides pre-trained models and
-    pipelines for this task.
+3. Emit structural relationships describing who sent the email, who received
+    it, how it links into an existing thread, and which cluster it belongs to.
 
-3. Relationship extraction techniques are then applied to identify the
-    connections between these entities. This can range from pattern-based
-    methods to more advanced models that identify subject-predicate-object
-    triples.
+4. Publish the resulting `KgTriple` facts to the `limela-kg` service, which
+    persists and broadcasts them.
 
-The token-level alignments from ColBERT can be a powerful tool here. For
-example, by comparing a cluster's text to a set of canonical "event trigger"
-templates (e.g., "meeting between PERSON and PERSON about TOPIC"), the ColBERT
-scores can effectively highlight the specific text spans that fill these slots,
-bootstrapping the information extraction process.
+This workflow deliberately omits body-derived entities in v0. The focus is on
+providing a privacy-preserving, operationally lightweight graph that still
+supports event-centric reasoning.
 
-### Knowledge Graph Schema and Population
+### Knowledge graph schema and population
 
-A simple but effective schema will be used to model the data in the knowledge
-graph:
+The v0 schema keeps the node and edge set intentionally small:
 
-- **Nodes:** `Email`, `Person`, `Organization`, `Date`, `TopicCluster`
+- **Nodes:** `Email`, `Person`, `TopicCluster`, and `Thread` (conversation root
+    derived from headers).
 
 - **Edges:**
 
-  - `SENT_BY` (Person $\rightarrow$ Email)
+  - `SENT_BY` (Email $\rightarrow$ Person)
 
-  - `RECEIVED_BY` (Person $\rightarrow$ Email)
+  - `RECEIVED_BY` (Email $\rightarrow$ Person)
 
-  - `MENTIONS` (Email $\rightarrow$ Entity)
+  - `IN_REPLY_TO` (Email $\rightarrow$ Thread)
 
   - `BELONGS_TO_CLUSTER` (Email $\rightarrow$ TopicCluster)
 
-  - `CLUSTER_CONTAINS` (TopicCluster $\rightarrow$ Entity)
+  - `HAS_THREAD` (Thread $\rightarrow$ Email) to provide bidirectional
+        traversal where required.
 
-The pipeline's final output will be a stream of `KgTriple` messages, ready for
-ingestion into a graph database. This creates a symbiotic analytical
-environment where the knowledge graph provides the structured, entity-level
-view, while the clustering system provides the thematic context.
+Each `Email` node carries literal properties for timestamp, subject, and the
+encrypted embedding pointer. The pointer references ColBERT shards in the blob
+store and is encrypted per tenant so the graph never leaks raw content. The
+knowledge graph therefore presents the relational skeleton of the email corpus
+whilst delegating semantic similarity to the embedding services.
+
+### `limela-kg`: Oxigraph-backed storage and propagation
+
+`limela-kg` materializes these triples using Oxigraph, an embedded RDF store.
+Key characteristics driven by ADR-001 are:
+
+- **Per-tenant isolation:** Each tenant receives a dedicated StatefulSet and
+    persistent volume, keeping graphs isolated and right-sizing hardware per
+    workload.
+
+- **Rust-native integration:** The service links directly against Oxigraph,
+    exposing an internal-only SPARQL 1.1 endpoint for operators and trusted
+    services such as Telephone.
+
+- **Delta streaming:** Every batch of inserted triples is also streamed, with
+    at-least-once delivery, to the GPU-backed Telephone inference engine so the
+    global event model stays current.
+
+- **Backups and recovery:** A private admin API triggers Oxigraph's incremental
+    `Store::backup()` snapshots, pushing compressed artefacts to object storage
+    for disaster recovery.
+
+- **Network hardening:** Kubernetes NetworkPolicies ensure only the API
+    gateway, observability tooling, and inference tier can reach the SPARQL
+    endpoint; it is never exposed publicly.
+
+By keeping the storage layer narrow and operationally disciplined, Stage 5 can
+offer reliable, low-latency graph updates that reflect pipeline output without
+duplicating sensitive payloads.
+
+### Roadmap: richer entity extraction
+
+Once governance controls and privacy reviews permit, the pipeline can extend
+Stage 5 with NER and relationship extraction to add `MENTIONS` edges or
+domain-specific nodes. Those enhancements will reuse the existing triple feed
+and Oxigraph deployment model but remain explicitly out of scope for v0.
 
 ## Closing the Loop: IMAP Integration for Cluster Visualization
 
@@ -953,7 +997,7 @@ component of the pipeline.
        <https://crates.io/crates/rust-bert/reverse_dependencies>
 
 [^11]: cpcdoy/rust-sbert: Rust port of sentence-transformers
-       (https://github.com/UKPLab/sentence-transformers) - GitHub, accessed on
+       (<https://github.com/UKPLab/sentence-transformers>) - GitHub, accessed on
        22 October 2025, <https://github.com/cpcdoy/rust-sbert>
 
 [^12]: [1910.07283] FISHDBC: Flexible, Incremental, Scalable, Hierarchical
