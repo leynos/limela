@@ -120,9 +120,9 @@ to-do list.
 
 The constellations have always been there. Limela helps you see them.
 
-## License
+## Licence
 
-ISC License — See [LICENSE](LICENSE) for details.
+ISC Licence — See [LICENSE](LICENSE) for details.
 
 ## Developed By
 
