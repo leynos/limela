@@ -42,17 +42,20 @@ Limela processes emails through a sophisticated pipeline:
 The result? Your emails become a navigable constellation map, with patterns
 and connections revealed.
 
-## Features (Planned)
+## Design Goals
 
-- **High-performance processing** — Written in Rust for speed and reliability
-- **Privacy-focused** — Stores only metadata and encrypted pointers, not
-  email bodies
+- **High-performance processing** — Built in Rust for speed and reliability
+- **Privacy by design** — Knowledge graph will store only metadata and
+  encrypted pointers; email bodies remain in your mail store
 - **IMAP integration** — Tag emails in your existing mail client based on
   discovered clusters
 - **Semantic search** — Find emails by meaning, not just keywords
 - **Conversation threading** — Automatic discovery of related emails across
   time and topics
 - **Streaming updates** — Real-time processing as new emails arrive
+
+Note: Limela is in early development. These are architectural goals, not yet
+implemented features.
 
 ## Getting Started (For Developers)
 
