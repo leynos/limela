@@ -64,6 +64,13 @@ make fmt
 
 For detailed development guidelines and coding standards, see the documentation in the `docs/` directory.
 
+## Related Projects
+
+Limela is built on powerful foundations:
+
+- **[Chutoro](https://github.com/leynos/chutoro)** — Our FISHDBC (Flexible, Incremental, Scalable, Hierarchical Density-Based Clustering) implementation that forms the core clustering engine of Limela
+- **[Telephone](https://github.com/leynos/telephone)** — Our GPU-accelerated neurosymbolic reasoning playground for large language models that will power Limela's intelligence
+
 ## Documentation
 
 - **[Roadmap](docs/roadmap.md)** — Development phases and current status
