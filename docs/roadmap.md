@@ -1,8 +1,8 @@
 # Development roadmap for the email intelligence pipeline
 
-## Phase 1: Establish deterministic ingestion
+## 1. Establish deterministic ingestion
 
-### Step: Build normaliser service
+### 1.1. Build normaliser service
 
 - [ ] Implement `limela-normalise` gRPC streaming from `BlobRef` to
       `ParsedEmail`, enforcing deterministic `EmailId` hashing; acceptance:
@@ -18,7 +18,7 @@
       documentation updated and an end-to-end fixture stores HTML bodies over
       2 MB as blobs.
 
-### Step: Harden purification flow
+### 1.2. Harden purification flow
 
 - [ ] Deliver `limela-purify` streaming gRPC service emitting `PurifiedDoc`,
       including reply-chain stripping and signature removal heuristics;
@@ -30,9 +30,9 @@
       queues with metrics; acceptance: load test demonstrates zero dropped
       messages at 10k messages per minute.
 
-## Phase 2: Embed and persist semantic features
+## 2. Embed and persist semantic features
 
-### Step: Stand up the dual-model embedding stage
+### 2.1. Stand up the dual-model embedding stage
 
 - [ ] Implement `limela-embed` service generating SBERT and ColBERT outputs per
       `MetaEmbedding`; acceptance: integration test confirms vector
@@ -47,7 +47,7 @@
       buckets, and error rates exposed via `limela-obsv`; acceptance: Grafana
       dashboard panels documented.
 
-### Step: Define feature governance
+### 2.2. Define feature governance
 
 - [ ] Establish regression suite comparing embeddings against a reference corpus
       to guard model drift; acceptance: CI job fails on cosine similarity delta
@@ -56,9 +56,9 @@
       checkpoints stored in documentation; acceptance: provenance and licensing
       recorded in the docs.
 
-## Phase 3: Integrate clustering workflow
+## 3. Integrate clustering workflow
 
-### Step: Integrate FISHDBC clustering
+### 3.1. Integrate FISHDBC clustering
 
 - [ ] Implement `limela-cluster` service consuming `MetaEmbedding` and emitting
       `ClusterAssignment`, honouring probability metadata; acceptance:
@@ -73,7 +73,7 @@
       exceeds a defined threshold; acceptance: alert fires in a synthetic drift
       scenario.
 
-### Step: Coordinate DAG orchestration
+### 3.2. Coordinate DAG orchestration
 
 - [ ] Extend the `limela-coordinator` DAG specification to include conditional
       fan-out to clustering and knowledge graph ingestion with retry policies;
@@ -83,9 +83,9 @@
       health probes; acceptance: Markdown passes linting and aligns with ADR
       constraints.
 
-## Phase 4: Record knowledge graph facts
+## 4. Record knowledge graph facts
 
-### Step: Implement `limela-kg` ingestion path
+### 4.1. Implement `limela-kg` ingestion path
 
 - [ ] Deliver streaming `KgIngester::Ingest` handler mapping cluster outputs to
       Oxigraph triples per ADR-001 scope; acceptance: conformance tests verify
@@ -99,7 +99,7 @@
 - [ ] Expose an admin API for snapshot status, queue depth, and last applied
       email; acceptance: metrics scraped by the observability stack.
 
-### Step: Secure and validate knowledge graph data
+### 4.2. Secure and validate knowledge graph data
 
 - [ ] Enforce schema validation ensuring only headers, structural metadata,
       cluster IDs, and encrypted embedding references are inserted; acceptance:
@@ -110,9 +110,9 @@
 - [ ] Build SPARQL acceptance suite covering representative query patterns for
       Telephone; acceptance: results match golden outputs for sample tenants.
 
-## Phase 5: Deliver end-to-end assurance and rollout
+## 5. Deliver end-to-end assurance and rollout
 
-### Step: Provide integration coverage
+### 5.1. Provide integration coverage
 
 - [ ] Assemble full pipeline smoke test harness replaying an anonymised mailbox
       fixture through all stages; acceptance: CI workflow completes within
@@ -124,7 +124,7 @@
       versions to flag regressions; acceptance: automated diffs stored for
       triage.
 
-### Step: Achieve operational readiness
+### 5.2. Achieve operational readiness
 
 - [ ] Finalise SLOs for latency, throughput, and data freshness with dashboards
       and alerting thresholds; acceptance: SRE sign-off recorded in
