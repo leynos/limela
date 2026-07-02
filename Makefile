@@ -1,4 +1,4 @@
-.PHONY: help all clean test build release lint fmt check-fmt markdownlint nixie
+.PHONY: help all clean test build release typecheck lint fmt check-fmt markdownlint nixie
 
 APP ?= limela
 CARGO ?= cargo
@@ -16,6 +16,9 @@ all: release ## Default target builds release binary
 
 clean: ## Remove build artifacts
 	$(CARGO) clean
+
+typecheck: ## Typecheck all targets with warnings treated as errors
+	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) check $(TEST_FLAGS) $(BUILD_JOBS)
 
 test: ## Run tests with warnings treated as errors
 	RUSTFLAGS="$(RUST_FLAGS)" $(CARGO) test $(TEST_FLAGS) $(BUILD_JOBS)
