@@ -8,6 +8,7 @@ CLIPPY_FLAGS ?= --all-targets --all-features -- $(RUST_FLAGS)
 TEST_FLAGS ?= --all-targets --all-features
 MDLINT ?= markdownlint-cli2
 NIXIE ?= nixie
+WHITAKER ?= whitaker
 
 build: target/debug/$(APP) ## Build debug binary
 release: target/release/$(APP) ## Build release binary
@@ -26,8 +27,9 @@ test: ## Run tests with warnings treated as errors
 target/%/$(APP): ## Build binary in debug or release mode
 	$(CARGO) build $(BUILD_JOBS) $(if $(findstring release,$(@)),--release) --bin $(APP)
 
-lint: ## Run Clippy with warnings denied
+lint: ## Run Clippy and the Whitaker Dylint suite with warnings denied
 	$(CARGO) clippy $(CLIPPY_FLAGS)
+	RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- --all-targets --all-features
 
 fmt: ## Format Rust and Markdown sources
 	$(CARGO) fmt --all
