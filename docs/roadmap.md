@@ -2,7 +2,7 @@
 
 ## 1. Establish deterministic ingestion
 
-### 1.1. Build normaliser service
+### 1.1. Build normalizer service
 
 - [ ] Implement `limela-normalise` gRPC streaming from `BlobRef` to
       `ParsedEmail`, enforcing deterministic `EmailId` hashing; acceptance:
@@ -40,8 +40,8 @@
 - [ ] Provision the embedding store interface for ColBERT shard persistence
       with resumable uploads; acceptance: failure injection test proves
       idempotent replays.
-- [ ] Optimise batch scheduling with Rayon parallelism and configurable
-      concurrency; acceptance: profiling demonstrates ≥70% CPU utilisation on
+- [ ] Optimize batch scheduling with Rayon parallelism and configurable
+      concurrency; acceptance: profiling demonstrates ≥70% CPU utilization on
       an 8-core node without queue starvation.
 - [ ] Add observability spans and metrics for token throughput, latency
       buckets, and error rates exposed via `limela-obsv`; acceptance: Grafana
@@ -114,7 +114,7 @@
 
 ### 5.1. Provide integration coverage
 
-- [ ] Assemble full pipeline smoke test harness replaying an anonymised mailbox
+- [ ] Assemble full pipeline smoke test harness replaying an anonymized mailbox
       fixture through all stages; acceptance: CI workflow completes within
       20 minutes and publishes trace artefacts.
 - [ ] Implement synthetic load generator to stress ingestion, embedding,
@@ -126,7 +126,7 @@
 
 ### 5.2. Achieve operational readiness
 
-- [ ] Finalise SLOs for latency, throughput, and data freshness with dashboards
+- [ ] Finalize SLOs for latency, throughput, and data freshness with dashboards
       and alerting thresholds; acceptance: SRE sign-off recorded in
       documentation.
 - [ ] Prepare rollout checklist covering phased tenant enablement, rollback
@@ -134,5 +134,5 @@
       the architecture group.
 
 Out of scope for this roadmap: IMAP write-back automation, dashboard
-visualisation, and downstream Telephone rule authoring. These follow once the
+visualization, and downstream Telephone rule authoring. These follow once the
 core pipeline reaches production readiness.
