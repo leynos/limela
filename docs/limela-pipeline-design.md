@@ -43,7 +43,7 @@ architectural and implementation decisions:
 
 ### End-to-End Data Flow as a Directed Acyclic Graph (DAG)
 
-The pipeline is modeled as a Directed Acyclic Graph (DAG), where each stage is
+The pipeline is modelled as a Directed Acyclic Graph (DAG), where each stage is
 a node and the data flow between stages constitutes the edges. This formalizes
 the processing flow and allows for clear definitions of inter-service
 communication contracts. The processing of individual emails or batches of
@@ -417,7 +417,7 @@ relationships that are already unambiguously stated in the data.
 
 While the primary focus of this pipeline is the textual content of email
 bodies, attachments are an important source of metadata. The pipeline will not
-process the content of attachments initially, but it will identify and catalog
+process the content of attachments initially, but it will identify and catalogue
 them. Using a crate like `mime_guess` (for extension-based guessing) or `infer`
 (for magic number-based identification), the system will determine the MIME
 type of each attachment. This information, along with the filename and size,
@@ -526,7 +526,7 @@ representation, and this pipeline leverages the strengths of both.
     (e.g., 768 dimensions) that represents the semantic meaning of the entire
     text. The key advantage of SBERT is its efficiency at scale. Document
     embeddings can be pre-computed and indexed in a vector database, allowing
-    for extremely fast approximate nearest neighbor (ANN) searches. This makes
+    for extremely fast approximate nearest neighbour (ANN) searches. This makes
     SBERT ideal for first-pass retrieval and broad similarity comparisons
     across millions of documents.
 
@@ -610,7 +610,7 @@ and flexible approach.
     FISHDBC is an incremental algorithm that can add new data points to an
     existing clustering structure without needing to reprocess the entire
     dataset.[^10] It achieves scalability by using an HNSW (Hierarchical
-    Navigable Small World) graph for efficient approximate nearest neighbor
+    Navigable Small World) graph for efficient approximate nearest neighbour
     search, avoiding the prohibitive $O(n^2)$ complexity of naive density-based
     methods.
 
@@ -633,7 +633,7 @@ score between all pairs of points, which is computationally infeasible. The
 design will therefore use a hybrid, multi-stage approach:
 
 1. **Candidate Selection (SBERT):** The HNSW index, which is the core of
-    FISHDBC's scalable neighbor search, will be built using the efficient SBERT
+    FISHDBC's scalable neighbour search, will be built using the efficient SBERT
     embeddings received in the `MetaEmbedding` message. When a new email
     arrives, this index rapidly identifies a small set of candidate similar
     documents.
@@ -824,13 +824,13 @@ work:
     `tokio` asynchronous runtime is used. This is the standard for building
     networked services in Rust.
 
-### Orchestration, DAG Modeling, and Deployment
+### Orchestration, DAG Modelling, and Deployment
 
 A heavy, general-purpose DAG orchestrator is ill-suited for this low-latency,
 streaming workload. Instead, a minimal, bespoke scheduler or "thin coordinator"
 is recommended.
 
-- **DAG Modeling with `daggy`:** The pipeline's structure will be defined and
+- **DAG Modelling with `daggy`:** The pipeline's structure will be defined and
     validated using the `daggy` crate.[^15] As a wrapper around
     `petgraph`, `daggy` provides a convenient API for building graph structures
     while enforcing acyclicity at insertion time, which prevents
@@ -954,7 +954,7 @@ component of the pipeline.
 | **Memory-Mapped Files**     | `memmap2`                                                 | A cross-platform library for using memory-mapped files, ideal for zero-copy access to ColBERT embeddings by a co-located scorer service.                            |
 | **Idempotency Hashing**     | `blake3`                                                  | An extremely fast and secure cryptographic hash function, ideal for generating deterministic `EmailId`s.                                                            |
 | **Observability**           | `opentelemetry`, `tracing`, `tonic-tracing-opentelemetry` | The standard ecosystem for implementing distributed tracing and metrics.                                                                                            |
-| **DAG Modeling**            | `daggy`                                                   | A safe and convenient wrapper around `petgraph` for defining and validating the pipeline's DAG structure. [^15]                                                     |
+| **DAG Modelling**           | `daggy`                                                   | A safe and convenient wrapper around `petgraph` for defining and validating the pipeline's DAG structure. [^15]                                                     |
 | **IMAP Connector**          | `async-imap`                                              | A mature, asynchronous client for interacting with IMAP servers, supporting extensions like `IDLE` and `QRESYNC`. [^14]                                             |
 | **Clustering**              | `flexible-clustering` (Python) via PyO3, or custom impl.  | The reference implementation for FISHDBC is in Python. A language interop layer is the fastest path to integration.                                                 |
 | **Drift Detection**         | Custom implementation                                     | A mature Rust crate for ADWIN is not readily available. The algorithm must be implemented based on the specifications in the relevant academic papers.              |

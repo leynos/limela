@@ -80,7 +80,7 @@ per tenant. Each instance:
   hops for every insert/query.
 
 - **SQL or NoSQL stores** would require bespoke graph layers (recursive CTEs or
-  denormalised adjacency documents) and still lack native SPARQL/Datalog
+  denormalized adjacency documents) and still lack native SPARQL/Datalog
   semantics.
 
 - **Telephone as the sole store** mixes transient inference state with durable
