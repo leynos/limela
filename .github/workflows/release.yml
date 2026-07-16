@@ -63,14 +63,14 @@ jobs:
           profile: minimal
           override: true
       - name: Cache cross binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/bin/cross
           key: cross-${{ runner.os }}
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
