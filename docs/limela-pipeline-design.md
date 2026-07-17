@@ -57,7 +57,7 @@ The high-level data flow is as follows:
     stage produces a `ParsedEmail` message.
 
 2. **Purification (Stage 2):** The `ParsedEmail` message is consumed. The
-    content body is converted to clean, plain text, and artifacts like reply
+    content body is converted to clean, plain text, and artefacts like reply
     chains and signatures are removed. This stage emits a `PurifiedDoc` message.
 
 3. **Meta-Embedding (Stage 3):** The `PurifiedDoc` is consumed. The text is
@@ -167,7 +167,7 @@ management, the entire system will be organized within a single Cargo workspace
   - `dashboard/`: A separate frontend application (e.g., Vite + React) that
         communicates with the `limela-api-gateway`.
 
-  - `deploy/`: Holds deployment artifacts like Docker Compose files or Helm
+  - `deploy/`: Holds deployment artefacts like Docker Compose files or Helm
         charts.
 
 ## Distributed Architecture and Dataflow Management
@@ -191,7 +191,7 @@ the data plane (payload movement).
     1. **Inline Payloads:** Small, fixed-size data like headers, purified
         text, and SBERT vectors are embedded directly within gRPC messages.
 
-    2. **Blob References (`BlobRef`):** Large, unstructured data artifacts,
+    2. **Blob References (`BlobRef`):** Large, unstructured data artefacts,
         such as raw EML files, attachments, and especially the voluminous
         ColBERT token embeddings, are stored in a dedicated object store (e.g.,
         S3, MinIO). Messages then carry lightweight references (`BlobRef`) to
@@ -466,7 +466,7 @@ Raw text extracted from emails is rife with noise that can severely degrade the
 performance of semantic models. This noise includes quoted reply chains, sender
 signatures, automated legal disclaimers, and promotional footers. The pipeline
 will employ a sophisticated cleaning module built upon the official `regex`
-crate to identify and remove these artifacts.
+crate to identify and remove these artefacts.
 
 The `regex` crate is chosen for its guaranteed linear-time performance
 (worst-case $O(m \times n)$ complexity), which prevents catastrophic
