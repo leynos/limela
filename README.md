@@ -1,5 +1,8 @@
 # Limela ✨
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](
+https://deepwiki.com/leynos/limela)
+
 > **isiLimela** — the Zulu name for the Pleiades, the constellation that
 > signals the time of planting and renewal in Bantu cultures.
 
