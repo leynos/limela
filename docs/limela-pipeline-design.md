@@ -417,11 +417,11 @@ relationships that are already unambiguously stated in the data.
 
 While the primary focus of this pipeline is the textual content of email
 bodies, attachments are an important source of metadata. The pipeline will not
-process the content of attachments initially, but it will identify and catalogue
-them. Using a crate like `mime_guess` (for extension-based guessing) or `infer`
-(for magic number-based identification), the system will determine the MIME
-type of each attachment. This information, along with the filename and size,
-will be stored as metadata associated with the email (e.g.,
+process the content of attachments initially, but it will identify and
+catalogue them. Using a crate like `mime_guess` (for extension-based guessing)
+or `infer` (for magic number-based identification), the system will determine
+the MIME type of each attachment. This information, along with the filename and
+size, will be stored as metadata associated with the email (e.g.,
 `attachment_count: 2`, `attachment_types: ["application/pdf", "image/jpeg"]`).
 This allows the system to use the presence of certain attachment types as a
 feature and flags attachments for potential processing by separate, specialized
@@ -801,11 +801,11 @@ real-time.
 
 ### Implementation with `async-imap`
 
-The `async-imap` crate is the recommended choice for building the IMAP
-connector service.[^14] The "IMAP writer" component will consume
-`ClusterAssignment` messages from the pipeline, connect to the appropriate IMAP
-server, and issue a `UID STORE <uid> +FLAGS.SILENT (LIMELA.C12345)` command to
-apply the cluster tag without generating unnecessary server responses.
+The `async-imap` crate is the recommended choice for building the IMAP connector
+service.[^14] The "IMAP writer" component will consume `ClusterAssignment`
+messages from the pipeline, connect to the appropriate IMAP server, and issue a
+`UID STORE <uid> +FLAGS.SILENT (LIMELA.C12345)` command to apply the cluster
+tag without generating unnecessary server responses.
 
 ## Operationalizing the Pipeline: Concurrency, Orchestration, and Adaptation
 
@@ -860,9 +860,8 @@ The architecture supports several deployment topologies:
 ### Observability with OpenTelemetry
 
 Comprehensive observability is a first-class concern. The system will be
-instrumented using the **OpenTelemetry** standard. The
-`opentelemetry`, `opentelemetry-otlp`, and `tonic-tracing-opentelemetry` crates
-will be used to:
+instrumented using the **OpenTelemetry** standard. The `opentelemetry`,
+`opentelemetry-otlp`, and `tonic-tracing-opentelemetry` crates will be used to:
 
 - Propagate a `trace_id` across all stages via gRPC metadata, providing a
     complete, end-to-end view of each email's journey through the pipeline.

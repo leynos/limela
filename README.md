@@ -8,7 +8,7 @@ https://deepwiki.com/leynos/limela)
 
 Limela finds the constellations in your emails, bringing order to your world.
 
----
+______________________________________________________________________
 
 ## What is Limela?
 
@@ -42,8 +42,8 @@ Limela processes emails through a sophisticated pipeline:
 5. **Knowledge Graph** — Build a queryable graph of people, topics, threads,
    and their relationships
 
-The result? Your emails become a navigable constellation map, with patterns
-and connections revealed.
+The result? Your emails become a navigable constellation map, with patterns and
+connections revealed.
 
 ## Design Goals
 
@@ -85,8 +85,8 @@ make lint
 make fmt
 ```
 
-For detailed development guidelines and coding standards, see the
-documentation in the `docs/` directory.
+For detailed development guidelines and coding standards, see the documentation
+in the `docs/` directory.
 
 ## Related Projects
 
@@ -104,7 +104,8 @@ Limela is built on powerful foundations:
 - **[Roadmap](docs/roadmap.md)** — Development phases and current status
 - **[Pipeline Design](docs/limela-pipeline-design.md)** — Comprehensive
   architectural documentation
-- **[ADR-001](docs/adr-001-eckg-v0-implementation-with-oxigraph-triple-store.md)**
+- **[ADR-001](docs/adr-001-eckg-v0-implementation-with-oxigraph-triple-store.md)
+  **
   — Knowledge graph implementation decision
 - **[Testing Guide](docs/rust-testing-with-rstest-fixtures.md)** — Testing
   strategies and patterns
@@ -131,7 +132,7 @@ ISC Licence — See [LICENSE](LICENSE) for details.
 
 **[df12 Productions](https://df12.studio)** ✨
 
----
+______________________________________________________________________
 
 > *"In the same way the Pleiades signal a time of renewal and growth, Limela
 > brings new understanding to your communication."*
