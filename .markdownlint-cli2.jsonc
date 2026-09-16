@@ -18,6 +18,8 @@
     ".vtcode/**",
     ".terraform/**",
     ".uv-cache/**",
+    "**/.uv-cache/**",
+    "**/.uv-tools/**",
     "memories/**",
     "CRUSH.md",
     "**/dist/**"
