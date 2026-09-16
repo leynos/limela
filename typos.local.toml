@@ -6,14 +6,15 @@ schema = 1
 stems = []
 
 [words]
-# Published upstream titles: Azure Architecture Center and a Hacker News item
-# containing "pasta-flavored".
-accepted = ["Center", "flavored"]
+# Published upstream title: a Hacker News item containing "pasta-flavored".
+accepted = ["flavored"]
 
 [words.corrections]
 
 [patterns]
-ignore = []
+# Inline code spans were masked by the previous dictionary snapshot; kept until
+# the shared dictionary rules on it.
+ignore = ['`[^`\n]+`']
 
 [files]
 exclude = []
