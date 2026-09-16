@@ -104,9 +104,7 @@ Limela is built on powerful foundations:
 - **[Roadmap](docs/roadmap.md)** — Development phases and current status
 - **[Pipeline Design](docs/limela-pipeline-design.md)** — Comprehensive
   architectural documentation
-- **[ADR-001](docs/adr-001-eckg-v0-implementation-with-oxigraph-triple-store.md)
-  **
-  — Knowledge graph implementation decision
+- **[ADR-001][adr-001]** — Knowledge graph implementation decision
 - **[Testing Guide](docs/rust-testing-with-rstest-fixtures.md)** — Testing
   strategies and patterns
 - **[Documentation Style Guide](docs/documentation-style-guide.md)** — Writing
@@ -136,3 +134,5 @@ ______________________________________________________________________
 
 > *"In the same way the Pleiades signal a time of renewal and growth, Limela
 > brings new understanding to your communication."*
+
+[adr-001]: docs/adr-001-eckg-v0-implementation-with-oxigraph-triple-store.md
