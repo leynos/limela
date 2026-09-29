@@ -80,6 +80,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
       - name: Build release binary
+        # A release is built with the platform linker and without the build
+        # standard's nightly-only flags: an assigned RUSTFLAGS displaces every
+        # `rustflags` table in .cargo/config.toml (cross passes it into the
+        # container). The value is what the toolchain action exports anyway.
+        env:
+          RUSTFLAGS: -D warnings
         run: cross +stable build --release --target ${{ matrix.target }}
       - name: Prepare artifact
         run: |
