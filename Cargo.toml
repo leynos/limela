@@ -71,3 +71,6 @@ result_large_err                    = "deny"
 [lints.rust]
 missing_docs                        = "deny"
 missing_crate_level_docs            = "deny"
+
+[dev-dependencies]
+rstest = "0.26.1"
