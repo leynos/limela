@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@a06e1b8f83ce7f9da5bb26625ef2b7021adbf958
+        uses: leynos/shared-actions/.github/actions/setup-rust@8901b50fda116a1a33304809b8767809dc17c203
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
