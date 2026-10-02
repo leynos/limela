@@ -105,6 +105,8 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
     joined
         .lines()
         .filter(|line| !line.trim_start().starts_with("echo"))
+        // A tool-availability probe names Cargo but runs no build.
+        .filter(|line| !line.trim_start().starts_with("command -v"))
         .filter(|line| line.contains("cargo") || line.contains("whitaker"))
         .map(assigned_rustflags)
         .collect()
