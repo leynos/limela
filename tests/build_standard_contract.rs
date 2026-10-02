@@ -23,18 +23,19 @@ use rstest::rstest;
 
 use fixtures::{
     BUILD_LOSES_THREADS, COMMENT_NAMING_THE_ACTION, COMMENTED_OK, COVERAGE_BORROWING_A_SIBLING,
-    COVERAGE_OK, COVERAGE_UNASSIGNED, COVERAGE_WITH_LINKER, COVERAGE_WITH_THREADS, LINKER_IN_BUILD,
-    LINUX_LOSES_LINKER, NIGHTLY, NIGHTLY_OK, NIGHTLY_SPELLED_APART, NO_BUILD_SOURCE, NO_CHANNEL,
-    SIBLING_KEY_OK, SPREAD_ARRAY, STABLE, STABLE_OK, STABLE_WITH_THREADS,
-    STEP_BEFORE_A_SIBLING_THAT_INSTALLS, STEP_INPUT_OFF, STEP_INSTALLS, STEP_INSTALLS_BARE,
-    STEP_MISSING_INPUT, TRIPLE_ONLY, TWO_CHANNELS, UNKNOWN_CHANNEL,
+    COVERAGE_EMPTY_POLICY, COVERAGE_OK, COVERAGE_OTHER_POLICY, COVERAGE_UNASSIGNED,
+    COVERAGE_WITH_LINKER, COVERAGE_WITH_THREADS, LINKER_IN_BUILD, LINUX_LOSES_LINKER, NIGHTLY,
+    NIGHTLY_OK, NIGHTLY_SPELLED_APART, NO_BUILD_SOURCE, NO_CHANNEL, SIBLING_KEY_OK, SPREAD_ARRAY,
+    STABLE, STABLE_OK, STABLE_WITH_THREADS, STEP_BEFORE_A_SIBLING_THAT_INSTALLS, STEP_INPUT_OFF,
+    STEP_INSTALLS, STEP_INSTALLS_BARE, STEP_MISSING_INPUT, TRIPLE_ONLY, TWO_CHANNELS,
+    UNKNOWN_CHANNEL,
 };
 
 use ci_steps::{Workflow, coverage_problems, linker_install_problems, workflow_problems};
 use config::{CONFIG, Flags, Pin, Problems, THREADS_FLAG, TOOLCHAIN, config_problems};
 use make::{
-    Assignment, Host, assigned_rustflags, commands_from, development_problems, held_out_problems,
-    held_out_target_count,
+    Assignment, Host, assigned_rustflags, commands_from, development_problem, development_problems,
+    held_out_problems, held_out_target_count,
 };
 
 /// Turns a list of complaints into a test result.
@@ -190,6 +191,8 @@ fn the_workflow_reader_wants_the_input_on_each_step(
 /// flag; a sibling step's assignment does not count.
 #[rstest]
 #[case::assigned(COVERAGE_OK, 0)]
+#[case::an_empty_warning_policy(COVERAGE_EMPTY_POLICY, 1)]
+#[case::a_different_warning_policy(COVERAGE_OTHER_POLICY, 1)]
 #[case::unassigned(COVERAGE_UNASSIGNED, 1)]
 #[case::with_the_frontend_flag(COVERAGE_WITH_THREADS, 1)]
 #[case::with_the_linker(COVERAGE_WITH_LINKER, 1)]
@@ -271,4 +274,28 @@ fn coverage_and_release_take_neither_flag() -> Result<(), String> {
         );
     }
     Ok(())
+}
+
+/// Scenario: a development command that assigns the standard flags, with and
+/// without the warning policy, for the `test` target and another target.
+///
+/// Invariant: the `test` target must keep `-D warnings` beside the standard flags
+/// (dropping `$(RUST_FLAGS)` would silently stop denying warnings), while a target
+/// that never carried the policy is not held to it.
+#[rstest]
+#[case::test_keeps_the_policy("test", &["-D", "warnings", THREADS_FLAG], 0)]
+#[case::test_spelled_joined("test", &["-Dwarnings", THREADS_FLAG], 0)]
+#[case::test_drops_the_policy("test", &[THREADS_FLAG], 1)]
+#[case::test_denies_nothing_useful("test", &["-A", "warnings", THREADS_FLAG], 1)]
+#[case::build_may_omit_the_policy("build", &[THREADS_FLAG], 0)]
+fn the_test_target_keeps_the_warning_policy(
+    #[case] target: &str,
+    #[case] words: &[&str],
+    #[case] expected: usize,
+) {
+    let assignment = Assignment::Flags(Flags::from_words(words.iter().copied()), true);
+    let found = development_problem(target, Host::Darwin, Pin::Nightly, &assignment)
+        .into_iter()
+        .count();
+    assert_eq!(found, expected, "target {target}: {words:?}");
 }

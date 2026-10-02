@@ -142,3 +142,14 @@ pub const COVERAGE_BORROWING_A_SIBLING: &str = concat!(
     "        uses: org/shared-actions/.github/actions/generate-coverage@0123456789abcdef0123456789abcdef01234567\n",
     "      - name: Other\n        env:\n          RUSTFLAGS: -D warnings\n"
 );
+
+/// A coverage step that assigns an empty warning policy.
+pub const COVERAGE_EMPTY_POLICY: &str = concat!(
+    "steps:\n  - name: coverage\n    uses: org/generate-coverage@abc\n",
+    "    env:\n      RUSTFLAGS: \"\"\n"
+);
+/// A coverage step that assigns a different policy from `-D warnings`.
+pub const COVERAGE_OTHER_POLICY: &str = concat!(
+    "steps:\n  - name: coverage\n    uses: org/generate-coverage@abc\n",
+    "    env:\n      RUSTFLAGS: -W unused\n"
+);
