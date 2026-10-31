@@ -51,10 +51,11 @@ pub enum Assignment {
     Bare(String),
     /// An assignment, and whether it keeps the caller's own `RUSTFLAGS`.
     Flags(Flags, bool),
-    /// An assignment on a direct Whitaker command. Whitaker runs on its installer-managed
-    /// toolchain, which must not inherit the development flags, so it assigns the warning
-    /// policy alone and the standard's flags are refused there instead of required.
-    Isolated(Flags),
+    /// An assignment on a direct Whitaker command, and whether it keeps the caller's own
+    /// `RUSTFLAGS`. Whitaker runs on its installer-managed toolchain, which must not inherit the
+    /// development flags, so it assigns the warning policy alone, keeps nothing of the caller's
+    /// flags, and the standard's flags are refused there instead of required.
+    Isolated(Flags, bool),
 }
 
 /// Reads the `RUSTFLAGS` a `make -n` output line assigns. An unreadable form is
@@ -106,11 +107,35 @@ pub fn assigned_rustflags(line: &str) -> Result<Assignment, String> {
     ))
 }
 
-/// Returns whether a command runs Whitaker directly.
+/// Returns whether a word is a leading `NAME=value` environment assignment.
+fn is_assignment(word: &str) -> bool {
+    word.split_once('=').is_some_and(|(name, _)| {
+        !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    })
+}
+
+/// Returns whether a command runs Whitaker directly: the executable is `whitaker`, past any
+/// leading environment assignments, so a Cargo test filter that merely names it does not count.
+///
+/// ```text
+/// runs_whitaker("RUSTFLAGS=\"-D warnings\" whitaker --all") == true
+/// runs_whitaker("RUSTFLAGS=\"-D warnings\" cargo test whitaker") == false
+/// ```
 fn runs_whitaker(command: &str) -> bool {
-    command
+    // A quoted value may hold spaces (`RUSTFLAGS="-D warnings"`), so drop each quoted span first.
+    let mut unquoted = String::new();
+    let mut quote = false;
+    for c in command.chars() {
+        match (quote, c) {
+            (_, '"') => quote = !quote,
+            (false, c) => unquoted.push(c),
+            (true, _) => {}
+        }
+    }
+    unquoted
         .split_whitespace()
-        .any(|word| word.rsplit('/').next() == Some("whitaker"))
+        .find(|word| !is_assignment(word))
+        .is_some_and(|word| word.rsplit('/').next() == Some("whitaker"))
 }
 
 /// Reads the assignment of each cargo or whitaker command `make -n` printed. A line that chains
@@ -132,8 +157,8 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
         .filter(|command| command.contains("cargo") || command.contains("whitaker"))
         .map(|command| match assigned_rustflags(&command)? {
             Assignment::Unassigned if compiles(&command) => Ok(Assignment::Bare(command)),
-            Assignment::Flags(flags, _) if runs_whitaker(&command) => {
-                Ok(Assignment::Isolated(flags))
+            Assignment::Flags(flags, inherits) if runs_whitaker(&command) => {
+                Ok(Assignment::Isolated(flags, inherits))
             }
             other => Ok(other),
         })
@@ -196,6 +221,25 @@ fn bare_problem(target: &str, host: Host, command: &str) -> String {
     )
 }
 
+/// Returns the complaint about a direct Whitaker command, if any: it must assign the warning
+/// policy and nothing of the caller's `RUSTFLAGS`, and must carry neither the frontend flag nor the
+/// linker flag.
+fn isolated_problem(target: &str, host: Host, flags: &Flags, inherits: bool) -> Option<String> {
+    let on = host.make_value();
+    if inherits {
+        return Some(format!(
+            "`make {target}` on {on} lets Whitaker inherit the caller's RUSTFLAGS"
+        ));
+    }
+    if flags.names_threads() || flags.names_linker() {
+        return Some(format!(
+            "`make {target}` on {on} gives Whitaker the development flags: {flags:?}"
+        ));
+    }
+    (!flags.denies_warnings())
+        .then(|| format!("`make {target}` on {on} runs Whitaker without -D warnings"))
+}
+
 /// Returns the complaint about one development command, if any: an assigned
 /// `RUSTFLAGS` keeps the caller's own flags and restates the frontend flag on a
 /// nightly pin, and mold on Linux. A direct Whitaker command is the exception: its
@@ -209,13 +253,8 @@ pub fn development_problem(
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, inherits),
         Assignment::Bare(command) => return Some(bare_problem(target, host, command)),
-        Assignment::Isolated(flags) => {
-            return (flags.names_threads() || flags.names_linker()).then(|| {
-                format!(
-                    "`make {target}` on {} gives Whitaker the development flags: {flags:?}",
-                    host.make_value()
-                )
-            });
+        Assignment::Isolated(flags, inherits) => {
+            return isolated_problem(target, host, flags, *inherits);
         }
         Assignment::Unassigned => return None,
     };
@@ -236,7 +275,7 @@ pub fn development_problem(
 pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) -> Option<String> {
     let assigned = commands.iter().filter_map(|command| match command {
         Assignment::Flags(flags, _) => Some(flags),
-        Assignment::Unassigned | Assignment::Bare(_) | Assignment::Isolated(_) => None,
+        Assignment::Unassigned | Assignment::Bare(_) | Assignment::Isolated(..) => None,
     });
     let keeps_the_policy = assigned.clone().any(Flags::denies_warnings);
     (target == "test" && !keeps_the_policy).then(|| {
@@ -245,6 +284,27 @@ pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) ->
             host.make_value()
         )
     })
+}
+
+/// Returns the complaint when the `lint` target runs no isolated Whitaker command: the suite is the
+/// lint gate's second half, and a bare, inheriting or missing Whitaker route must not pass for it.
+///
+/// # Errors
+///
+/// Returns the reason when the `lint` target is not defined or unreadable.
+pub fn whitaker_route_problems(runner: MakeRunner, host: Host) -> Result<Problems, String> {
+    let commands = make_commands(runner, "lint", host)?;
+    let isolated = commands
+        .iter()
+        .any(|command| matches!(command, Assignment::Isolated(..)));
+    let mut problems = Problems::new();
+    if !isolated {
+        problems.push(format!(
+            "`make lint` on {} runs no Whitaker command that assigns RUSTFLAGS",
+            host.make_value()
+        ));
+    }
+    Ok(problems)
 }
 
 /// Returns every complaint about the development targets on one host, and how
@@ -264,7 +324,7 @@ pub fn development_problems(
         let commands = make_commands(runner, target, host)?;
         read += commands
             .iter()
-            .filter(|command| matches!(command, Assignment::Flags(..) | Assignment::Isolated(_)))
+            .filter(|command| matches!(command, Assignment::Flags(..) | Assignment::Isolated(..)))
             .count();
         problems.extend(
             commands
@@ -281,7 +341,7 @@ pub fn development_problems(
 fn held_out_command_problems(target: &str, assignment: &Assignment) -> Problems {
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, *inherits),
-        Assignment::Isolated(flags) => (flags, true),
+        Assignment::Isolated(flags, _) => (flags, true),
         Assignment::Bare(command) => {
             return vec![format!(
                 "`make {target}` runs `{command}`, which takes the configuration's flags"

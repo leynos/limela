@@ -27,7 +27,7 @@ The repository pins the active toolchain in `rust-toolchain.toml`:
 
 ```toml
 [toolchain]
-channel = "nightly-2026-05-28"
+channel = "nightly-2026-10-30"
 components = ["rustfmt", "clippy", "rust-analyzer"]
 ```
 
@@ -62,13 +62,18 @@ source repeats the same flags apart from the linker.
 
 An assigned `RUSTFLAGS` replaces the configuration's flags, so the Makefile
 recipes that set it compose the standard's flags onto any inherited value (CI's
-`setup-rust` exports one). Two builds are deliberately excluded: coverage
-assigns `RUSTFLAGS` without the fast flags, because a measurement should not
-depend on them, and the release recipe and workflow keep the platform linker,
-because they assign `RUSTFLAGS` (even an empty value displaces the
-configuration). Cargo has no per-profile `rustflags`, so a direct
-`cargo build --release` takes the configuration's flags unless `RUSTFLAGS` is
-assigned too.
+`setup-rust` exports one). The `lint` recipe's Whitaker command is the one
+deliberate exception among the gate recipes: Whitaker runs on its
+installer-managed toolchain, which must not inherit the repository's
+development flags, so it assigns `RUSTFLAGS="$(RUST_FLAGS)"` (`-D warnings`)
+alone, keeps none of the caller's flags and takes neither `-Zthreads=8` nor
+`mold`, while Clippy in the same recipe keeps the standard's flags. Two builds
+are also deliberately excluded: coverage assigns `RUSTFLAGS` without the fast
+flags, because a measurement should not depend on them, and the release recipe
+and workflow keep the platform linker, because they assign `RUSTFLAGS` (even an
+empty value displaces the configuration). Cargo has no per-profile `rustflags`,
+so a direct `cargo build --release` takes the configuration's flags unless
+`RUSTFLAGS` is assigned too.
 
 On Linux, install `mold` before building: the configuration names it, so a
 build without it fails at link time. CI installs it through `setup-rust`'s
@@ -77,7 +82,11 @@ reads the configuration sources, the commands `make -n` prints for each
 development target on a Linux host and a macOS host (each keeping the caller's
 own `RUSTFLAGS`) and for each coverage and release target on a Linux host, and
 the `setup-rust` steps of the CI workflows (each must pass `install-mold`), so
-a flag lost through a recipe or workflow edit fails there.
+a flag lost through a recipe or workflow edit fails there. For Whitaker the
+contract runs the other way: the `lint` target must run a Whitaker command that
+assigns the warning policy, inherits nothing and names neither flag, and a
+Whitaker command that carries a development flag, inherits the caller's flags,
+drops `-D warnings` or assigns nothing fails.
 
 ### Cranelift
 

@@ -49,7 +49,7 @@ use ci_steps::{
 use config::{CONFIG, Flags, Pin, Problems, THREADS_FLAG, TOOLCHAIN, config_problems};
 use make::{
     Assignment, Host, assigned_rustflags, commands_from, development_problems, held_out_problems,
-    held_out_target_count, real_make, test_policy_problem,
+    held_out_target_count, real_make, test_policy_problem, whitaker_route_problems,
 };
 
 /// Turns a list of complaints into a test result.
@@ -264,12 +264,13 @@ fn development_targets_restate_the_flags_on_linux() -> Result<(), String> {
             "no development target assigns RUSTFLAGS, so the check proves nothing".to_owned(),
         );
     }
-    Ok(())
+    none_of(&whitaker_route_problems(real_make, Host::Linux)?)
 }
 
 #[test]
 fn development_targets_keep_the_frontend_but_not_the_linker_elsewhere() -> Result<(), String> {
-    none_of(&development_problems(real_make, Host::Darwin, Pin::read(TOOLCHAIN)?)?.0)
+    none_of(&development_problems(real_make, Host::Darwin, Pin::read(TOOLCHAIN)?)?.0)?;
+    none_of(&whitaker_route_problems(real_make, Host::Darwin)?)
 }
 
 /// Coverage measures and release ships, so both stay on the default flags. A
