@@ -23,10 +23,14 @@ mod exhaustive;
 mod fixtures;
 #[path = "build_standard_support/injected.rs"]
 mod injected;
+#[path = "build_standard_support/injected_whitaker.rs"]
+mod injected_whitaker;
 #[path = "build_standard_support/make.rs"]
 mod make;
 #[path = "build_standard_support/shell.rs"]
 mod shell;
+#[path = "build_standard_support/whitaker.rs"]
+mod whitaker;
 #[path = "build_standard_support/workflow_exhaustive.rs"]
 mod workflow_exhaustive;
 use rstest::rstest;
@@ -49,8 +53,9 @@ use ci_steps::{
 use config::{CONFIG, Flags, Pin, Problems, THREADS_FLAG, TOOLCHAIN, config_problems};
 use make::{
     Assignment, Host, assigned_rustflags, commands_from, development_problems, held_out_problems,
-    held_out_target_count, real_make, test_policy_problem, whitaker_route_problems,
+    held_out_target_count, real_make, test_policy_problem,
 };
+use whitaker::whitaker_route_problems;
 
 /// Turns a list of complaints into a test result.
 fn none_of(problems: &Problems) -> Result<(), String> {
