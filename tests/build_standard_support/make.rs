@@ -128,7 +128,7 @@ fn runs_whitaker(command: &str) -> bool {
     for c in command.chars() {
         match (quote, c) {
             (_, '"') => quote = !quote,
-            (false, c) => unquoted.push(c),
+            (false, _) => unquoted.push(c),
             (true, _) => {}
         }
     }
