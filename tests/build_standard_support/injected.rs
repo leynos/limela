@@ -15,14 +15,14 @@ use super::{
 
 /// Renders canned `make -n` text for a fake runner through a fallible writer, so
 /// the fakes keep the runner's `Result` shape honestly.
-fn canned(text: std::fmt::Arguments) -> Result<String, String> {
+pub(super) fn canned(text: std::fmt::Arguments) -> Result<String, String> {
     let mut out = String::new();
     out.write_fmt(text).map_err(|error| error.to_string())?;
     Ok(out)
 }
 
 /// Returns the linker flag the standard adds on a host: mold on Linux, nothing elsewhere.
-const fn linker_flag(host: Host) -> &'static str {
+pub(super) const fn linker_flag(host: Host) -> &'static str {
     if host.takes_linker_flag() {
         " -Clink-arg=-fuse-ld=mold"
     } else {
@@ -97,7 +97,7 @@ fn held_out_unassigned_make(_target: Target<'_>, _host: Host) -> Result<String, 
 }
 
 /// A fake runner for a target that is not defined.
-fn undefined_make(target: Target<'_>, _host: Host) -> Result<String, String> {
+pub(super) fn undefined_make(target: Target<'_>, _host: Host) -> Result<String, String> {
     Err(format!(
         "`make -n {}` failed, so it is not defined",
         target.name()
@@ -105,7 +105,7 @@ fn undefined_make(target: Target<'_>, _host: Host) -> Result<String, String> {
 }
 
 /// Turns a failed expectation into the error a test returns.
-fn ensure(holds: bool, message: &str) -> Result<(), String> {
+pub(super) fn ensure(holds: bool, message: &str) -> Result<(), String> {
     if holds {
         Ok(())
     } else {

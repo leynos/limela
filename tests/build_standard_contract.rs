@@ -23,10 +23,14 @@ mod exhaustive;
 mod fixtures;
 #[path = "build_standard_support/injected.rs"]
 mod injected;
+#[path = "build_standard_support/injected_whitaker.rs"]
+mod injected_whitaker;
 #[path = "build_standard_support/make.rs"]
 mod make;
 #[path = "build_standard_support/shell.rs"]
 mod shell;
+#[path = "build_standard_support/whitaker.rs"]
+mod whitaker;
 #[path = "build_standard_support/workflow_exhaustive.rs"]
 mod workflow_exhaustive;
 use rstest::rstest;
@@ -51,6 +55,7 @@ use make::{
     Assignment, Host, assigned_rustflags, commands_from, development_problems, held_out_problems,
     held_out_target_count, real_make, test_policy_problem,
 };
+use whitaker::whitaker_route_problems;
 
 /// Turns a list of complaints into a test result.
 fn none_of(problems: &Problems) -> Result<(), String> {
@@ -264,12 +269,13 @@ fn development_targets_restate_the_flags_on_linux() -> Result<(), String> {
             "no development target assigns RUSTFLAGS, so the check proves nothing".to_owned(),
         );
     }
-    Ok(())
+    none_of(&whitaker_route_problems(real_make, Host::Linux)?)
 }
 
 #[test]
 fn development_targets_keep_the_frontend_but_not_the_linker_elsewhere() -> Result<(), String> {
-    none_of(&development_problems(real_make, Host::Darwin, Pin::read(TOOLCHAIN)?)?.0)
+    none_of(&development_problems(real_make, Host::Darwin, Pin::read(TOOLCHAIN)?)?.0)?;
+    none_of(&whitaker_route_problems(real_make, Host::Darwin)?)
 }
 
 /// Coverage measures and release ships, so both stay on the default flags. A

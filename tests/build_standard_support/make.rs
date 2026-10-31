@@ -7,6 +7,7 @@ use std::process::Command;
 use super::{
     config::{Flags, LINKER_FLAG, Pin, Problems, THREADS_FLAG},
     shell::{compiles, shell_commands, without_leading_keywords},
+    whitaker::{isolated_problem, runs_whitaker},
 };
 
 /// Makefile targets that build for development. A command in one either assigns
@@ -27,7 +28,7 @@ pub enum Host {
 
 impl Host {
     /// Returns the value `uname -s` reports for the host.
-    const fn make_value(self) -> &'static str {
+    pub(super) const fn make_value(self) -> &'static str {
         match self {
             Self::Linux => "Linux",
             Self::Darwin => "Darwin",
@@ -51,6 +52,11 @@ pub enum Assignment {
     Bare(String),
     /// An assignment, and whether it keeps the caller's own `RUSTFLAGS`.
     Flags(Flags, bool),
+    /// An assignment on a direct Whitaker command, and whether it keeps the caller's own
+    /// `RUSTFLAGS`. Whitaker runs on its installer-managed toolchain, which must not inherit the
+    /// development flags, so it assigns the warning policy alone, keeps nothing of the caller's
+    /// flags, and the standard's flags are refused there instead of required.
+    Isolated(Flags, bool),
 }
 
 /// Reads the `RUSTFLAGS` a `make -n` output line assigns. An unreadable form is
@@ -121,6 +127,9 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
         .filter(|command| command.contains("cargo") || command.contains("whitaker"))
         .map(|command| match assigned_rustflags(&command)? {
             Assignment::Unassigned if compiles(&command) => Ok(Assignment::Bare(command)),
+            Assignment::Flags(flags, inherits) if runs_whitaker(&command) => {
+                Ok(Assignment::Isolated(flags, inherits))
+            }
             other => Ok(other),
         })
         .collect()
@@ -170,7 +179,11 @@ pub fn real_make(target: Target<'_>, host: Host) -> Result<String, String> {
 }
 
 /// Reads the commands a runner reports for a target on a host.
-fn make_commands(runner: MakeRunner, target: &str, host: Host) -> Result<Vec<Assignment>, String> {
+pub(super) fn make_commands(
+    runner: MakeRunner,
+    target: &str,
+    host: Host,
+) -> Result<Vec<Assignment>, String> {
     commands_from(&runner(Target(target), host)?)
 }
 
@@ -184,7 +197,8 @@ fn bare_problem(target: &str, host: Host, command: &str) -> String {
 
 /// Returns the complaint about one development command, if any: an assigned
 /// `RUSTFLAGS` keeps the caller's own flags and restates the frontend flag on a
-/// nightly pin, and mold on Linux.
+/// nightly pin, and mold on Linux. A direct Whitaker command is the exception: its
+/// installer-managed toolchain must not inherit the development flags.
 pub fn development_problem(
     target: &str,
     host: Host,
@@ -194,6 +208,9 @@ pub fn development_problem(
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, inherits),
         Assignment::Bare(command) => return Some(bare_problem(target, host, command)),
+        Assignment::Isolated(flags, inherits) => {
+            return isolated_problem(target, host, flags, *inherits);
+        }
         Assignment::Unassigned => return None,
     };
     if !inherits {
@@ -213,7 +230,7 @@ pub fn development_problem(
 pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) -> Option<String> {
     let assigned = commands.iter().filter_map(|command| match command {
         Assignment::Flags(flags, _) => Some(flags),
-        Assignment::Unassigned | Assignment::Bare(_) => None,
+        Assignment::Unassigned | Assignment::Bare(_) | Assignment::Isolated(..) => None,
     });
     let keeps_the_policy = assigned.clone().any(Flags::denies_warnings);
     (target == "test" && !keeps_the_policy).then(|| {
@@ -241,7 +258,7 @@ pub fn development_problems(
         let commands = make_commands(runner, target, host)?;
         read += commands
             .iter()
-            .filter(|command| matches!(command, Assignment::Flags(..)))
+            .filter(|command| matches!(command, Assignment::Flags(..) | Assignment::Isolated(..)))
             .count();
         problems.extend(
             commands
@@ -258,6 +275,7 @@ pub fn development_problems(
 fn held_out_command_problems(target: &str, assignment: &Assignment) -> Problems {
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, *inherits),
+        Assignment::Isolated(flags, _) => (flags, true),
         Assignment::Bare(command) => {
             return vec![format!(
                 "`make {target}` runs `{command}`, which takes the configuration's flags"
