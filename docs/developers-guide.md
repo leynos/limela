@@ -82,13 +82,16 @@ a flag lost through a recipe or workflow edit fails there.
 ### Cranelift
 
 Exception: Cranelift is not the development-profile backend. The repository pins
-`nightly-2026-05-28`, but the release workflow
+`nightly-2026-10-30`, but the release workflow
 (`cross +stable build --release`) builds on a stable toolchain against
 `.cargo/config.toml`, and stable Cargo refuses a
 `[profile.dev] codegen-backend` key ("config profile `dev` is not valid"), so
 selecting the backend would break that build (recorded 2026-09-29). That build
 assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
-Revisit if that build moves to the pinned nightly.
+Revisit if that build moves to the pinned nightly. The exception rests on that
+release constraint, not on a suite measurement under Cranelift, so moving the
+pin from `nightly-2026-05-28` to `nightly-2026-10-30` needed no new measurement
+and no deferral date.
 
 ## CodeScene coverage and the CV-005 contract
 

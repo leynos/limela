@@ -97,6 +97,22 @@ fn held_out_unassigned_make(_target: Target<'_>, _host: Host) -> Result<String, 
 }
 
 /// A fake runner for a target that is not defined.
+/// A fake runner whose Whitaker command is isolated: it assigns only the warning policy.
+fn isolated_whitaker_make(_target: Target<'_>, host: Host) -> Result<String, String> {
+    let linker = linker_flag(host);
+    canned(format_args!(
+        "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo clippy --all-targets\nRUSTFLAGS=\"-D warnings\" whitaker --all\n"
+    ))
+}
+
+/// A fake runner whose Whitaker command inherits the development flags.
+fn contaminated_whitaker_make(_target: Target<'_>, host: Host) -> Result<String, String> {
+    let linker = linker_flag(host);
+    canned(format_args!(
+        "RUSTFLAGS=\"${{RUSTFLAGS:+$RUSTFLAGS }}-D warnings {THREADS_FLAG}{linker}\" cargo clippy --all-targets\nRUSTFLAGS=\"-D warnings {THREADS_FLAG}{linker}\" whitaker --all\n"
+    ))
+}
+
 fn undefined_make(target: Target<'_>, _host: Host) -> Result<String, String> {
     Err(format!(
         "`make -n {}` failed, so it is not defined",
@@ -322,5 +338,29 @@ fn the_held_out_policy_runs_against_an_injected_runner() -> Result<(), String> {
     ensure(
         held_out_target_count() == 0 || held_out_problems(undefined_make).is_err(),
         "the listed held-out targets were not run",
+    )
+}
+
+/// Scenario: a direct Whitaker command, whose installer-managed toolchain must not inherit the
+/// repository's development flags (Concordat `rust-build-defaults` BD-008).
+///
+/// Invariant: an isolated command that assigns only the warning policy raises nothing, and a
+/// command that carries the frontend or linker flag is refused by target name.
+#[test]
+fn a_direct_whitaker_command_must_stay_isolated_from_the_development_flags() -> Result<(), String> {
+    let pin = Pin::Nightly;
+    for host in [Host::Linux, Host::Darwin] {
+        let (isolated, _) = development_problems(isolated_whitaker_make, host, pin)?;
+        ensure(
+            isolated.is_empty(),
+            &format!("an isolated Whitaker command raised {isolated:?}"),
+        )?;
+    }
+    let (contaminated, _) = development_problems(contaminated_whitaker_make, Host::Linux, pin)?;
+    ensure(
+        contaminated
+            .iter()
+            .any(|problem| problem.contains("gives Whitaker the development flags")),
+        "a Whitaker command carrying the development flags passed",
     )
 }

@@ -51,6 +51,10 @@ pub enum Assignment {
     Bare(String),
     /// An assignment, and whether it keeps the caller's own `RUSTFLAGS`.
     Flags(Flags, bool),
+    /// An assignment on a direct Whitaker command. Whitaker runs on its installer-managed
+    /// toolchain, which must not inherit the development flags, so it assigns the warning
+    /// policy alone and the standard's flags are refused there instead of required.
+    Isolated(Flags),
 }
 
 /// Reads the `RUSTFLAGS` a `make -n` output line assigns. An unreadable form is
@@ -102,6 +106,13 @@ pub fn assigned_rustflags(line: &str) -> Result<Assignment, String> {
     ))
 }
 
+/// Returns whether a command runs Whitaker directly.
+fn runs_whitaker(command: &str) -> bool {
+    command
+        .split_whitespace()
+        .any(|word| word.rsplit('/').next() == Some("whitaker"))
+}
+
 /// Reads the assignment of each cargo or whitaker command `make -n` printed. A line that chains
 /// commands is read one command at a time.
 ///
@@ -121,6 +132,9 @@ pub fn commands_from(stdout: &str) -> Result<Vec<Assignment>, String> {
         .filter(|command| command.contains("cargo") || command.contains("whitaker"))
         .map(|command| match assigned_rustflags(&command)? {
             Assignment::Unassigned if compiles(&command) => Ok(Assignment::Bare(command)),
+            Assignment::Flags(flags, _) if runs_whitaker(&command) => {
+                Ok(Assignment::Isolated(flags))
+            }
             other => Ok(other),
         })
         .collect()
@@ -184,7 +198,8 @@ fn bare_problem(target: &str, host: Host, command: &str) -> String {
 
 /// Returns the complaint about one development command, if any: an assigned
 /// `RUSTFLAGS` keeps the caller's own flags and restates the frontend flag on a
-/// nightly pin, and mold on Linux.
+/// nightly pin, and mold on Linux. A direct Whitaker command is the exception: its
+/// installer-managed toolchain must not inherit the development flags.
 pub fn development_problem(
     target: &str,
     host: Host,
@@ -194,6 +209,14 @@ pub fn development_problem(
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, inherits),
         Assignment::Bare(command) => return Some(bare_problem(target, host, command)),
+        Assignment::Isolated(flags) => {
+            return (flags.names_threads() || flags.names_linker()).then(|| {
+                format!(
+                    "`make {target}` on {} gives Whitaker the development flags: {flags:?}",
+                    host.make_value()
+                )
+            });
+        }
         Assignment::Unassigned => return None,
     };
     if !inherits {
@@ -213,7 +236,7 @@ pub fn development_problem(
 pub fn test_policy_problem(target: &str, host: Host, commands: &[Assignment]) -> Option<String> {
     let assigned = commands.iter().filter_map(|command| match command {
         Assignment::Flags(flags, _) => Some(flags),
-        Assignment::Unassigned | Assignment::Bare(_) => None,
+        Assignment::Unassigned | Assignment::Bare(_) | Assignment::Isolated(_) => None,
     });
     let keeps_the_policy = assigned.clone().any(Flags::denies_warnings);
     (target == "test" && !keeps_the_policy).then(|| {
@@ -241,7 +264,7 @@ pub fn development_problems(
         let commands = make_commands(runner, target, host)?;
         read += commands
             .iter()
-            .filter(|command| matches!(command, Assignment::Flags(..)))
+            .filter(|command| matches!(command, Assignment::Flags(..) | Assignment::Isolated(_)))
             .count();
         problems.extend(
             commands
@@ -258,6 +281,7 @@ pub fn development_problems(
 fn held_out_command_problems(target: &str, assignment: &Assignment) -> Problems {
     let (flags, inherits) = match assignment {
         Assignment::Flags(flags, inherits) => (flags, *inherits),
+        Assignment::Isolated(flags) => (flags, true),
         Assignment::Bare(command) => {
             return vec![format!(
                 "`make {target}` runs `{command}`, which takes the configuration's flags"
