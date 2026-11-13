@@ -26,8 +26,14 @@ The repository pins the active toolchain in `rust-toolchain.toml`:
 
 ```toml
 [toolchain]
-channel = "nightly-2026-10-30"
-components = ["rustfmt", "clippy", "rust-analyzer"]
+channel = "nightly-2026-11-13"
+components = [
+  "clippy",
+  "llvm-tools-preview",
+  "rust-analyzer",
+  "rustc-codegen-cranelift-preview",
+  "rustfmt",
+]
 ```
 
 Use this pinned nightly toolchain for local development, formatting, linting,
