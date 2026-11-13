@@ -18,7 +18,6 @@ MDTABLEFIX ?= mdtablefix
 MDTABLEFIX_SELECT = --git --include-untracked
 MDTABLEFIX_RULES = --wrap --renumber --breaks --ellipsis --fences
 NIXIE ?= nixie
-WHITAKER ?= whitaker
 UV ?= uv
 UV_ENV = UV_CACHE_DIR=.uv-cache UV_TOOL_DIR=.uv-tools
 TYPOS_CONFIG_BUILDER_VERSION ?= v0.1.3
@@ -87,7 +86,7 @@ interrogate: ## Enforce complete Python docstring coverage
 lint: ## Run Clippy, the Whitaker Dylint suite and the docstring gate
 	$(MAKE) --no-print-directory interrogate
 	RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)" $(CARGO) clippy $(CLIPPY_FLAGS)
-	RUSTFLAGS="$(RUST_FLAGS)" $(WHITAKER) --all -- --all-targets --all-features
+	PATH="$${XDG_BIN_HOME:-$(HOME)/.local/bin}:$(PATH)" CARGO_UNSTABLE_CODEGEN_BACKEND=true CARGO_PROFILE_DEV_CODEGEN_BACKEND=llvm RUSTFLAGS="-D warnings" whitaker --all -- --all-targets --all-features
 
 fmt: ## Format Rust and Markdown sources
 	$(CARGO) fmt --all

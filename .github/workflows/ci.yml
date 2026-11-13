@@ -36,6 +36,8 @@ jobs:
           globs: '**/*.md'
       - name: Install Whitaker
         uses: leynos/shared-actions/.github/actions/install-whitaker@0eabb6bc07148981de5da395e30cd78d83f5c7c2
+        with:
+          cranelift: true
       - name: Lint
         run: make lint
       - name: Setup uv
