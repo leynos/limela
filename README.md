@@ -135,4 +135,4 @@ ______________________________________________________________________
 > *"In the same way the Pleiades signal a time of renewal and growth, Limela
 > brings new understanding to your communication."*
 
-[adr-001]: docs/adr-001-eckg-v0-implementation-with-oxigraph-triple-store.md
+[adr-001]: docs/adrs/adr-0001-eckg-v0-implementation-with-oxigraph-triple-store.md
