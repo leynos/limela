@@ -19,9 +19,8 @@ fetches that interpreter when the host lacks one.
 
 ## Rust baseline
 
-Limela targets Rust Edition 2024 and declares a minimum supported Rust version
-(MSRV) of 1.87 in `Cargo.toml`. Keep the README prerequisite and package
-metadata aligned whenever the MSRV changes.
+Limela targets Rust Edition 2024. It is an application, so it declares no
+minimum supported Rust version: every build uses the nightly pinned below.
 
 The repository pins the active toolchain in `rust-toolchain.toml`:
 
@@ -65,15 +64,15 @@ recipes that set it compose the standard's flags onto any inherited value (CI's
 `setup-rust` exports one). The `lint` recipe's Whitaker command is the one
 deliberate exception among the gate recipes: Whitaker runs on its
 installer-managed toolchain, which must not inherit the repository's
-development flags, so it assigns `RUSTFLAGS="$(RUST_FLAGS)"` (`-D warnings`)
-alone, keeps none of the caller's flags and takes neither `-Zthreads=8` nor
-`mold`, while Clippy in the same recipe keeps the standard's flags. Two builds
-are also deliberately excluded: coverage assigns `RUSTFLAGS` without the fast
-flags, because a measurement should not depend on them, and the release recipe
-and workflow keep the platform linker, because they assign `RUSTFLAGS` (even an
-empty value displaces the configuration). Cargo has no per-profile `rustflags`,
-so a direct `cargo build --release` takes the configuration's flags unless
-`RUSTFLAGS` is assigned too.
+development flags, so it assigns `RUSTFLAGS="-D warnings"` alone, keeps none of
+the caller's flags and takes neither `-Zthreads=8` nor `mold`, while Clippy in
+the same recipe keeps the standard's flags. Two builds are also deliberately
+excluded: coverage assigns `RUSTFLAGS` without the fast flags, because a
+measurement should not depend on them, and the release recipe and workflow keep
+the platform linker, because they assign `RUSTFLAGS` (even an empty value
+displaces the configuration). Cargo has no per-profile `rustflags`, so a direct
+`cargo build --release` takes the configuration's flags unless `RUSTFLAGS` is
+assigned too.
 
 On Linux, install `mold` before building: the configuration names it, so a
 build without it fails at link time. CI installs it through `setup-rust`'s
@@ -90,17 +89,14 @@ drops `-D warnings` or assigns nothing fails.
 
 ### Cranelift
 
-Exception: Cranelift is not the development-profile backend. The repository pins
-`nightly-2026-10-30`, but the release workflow
-(`cross +stable build --release`) builds on a stable toolchain against
-`.cargo/config.toml`, and stable Cargo refuses a
-`[profile.dev] codegen-backend` key ("config profile `dev` is not valid"), so
-selecting the backend would break that build (recorded 2026-09-29). That build
-assigns `RUSTFLAGS`, so the nightly-only `-Zthreads` flag never reaches it.
-Revisit if that build moves to the pinned nightly. The exception rests on that
-release constraint, not on a suite measurement under Cranelift, so moving the
-pin from `nightly-2026-05-28` to `nightly-2026-10-30` needed no new measurement
-and no deferral date.
+Cranelift is the default backend for development builds, set in
+`.cargo/config.toml` (`[profile.dev] codegen-backend = "cranelift"`) on the
+nightly pinned in `rust-toolchain.toml`. The release workflow builds on the
+same pinned nightly with LLVM, because the dev profile does not reach the
+release profile. The `lint` recipe runs Whitaker with the LLVM backend, since
+its installer-managed toolchain does not take the Cranelift default, and
+coverage selects LLVM too, since Cranelift cannot instrument coverage. The full
+suite (84 tests) passes under Cranelift.
 
 ## CodeScene coverage and the CV-005 contract
 

@@ -66,7 +66,7 @@ Limela requires Rust (Edition 2024) and uses a strict code quality standard.
 
 ### Prerequisites
 
-- Rust toolchain 1.87+ (MSRV: 1.87)
+- The Rust nightly pinned in `rust-toolchain.toml` (rustup installs it)
 - Make (for convenience commands)
 
 ### Quick Start
