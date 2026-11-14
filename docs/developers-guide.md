@@ -95,14 +95,18 @@ drops `-D warnings` or assigns nothing fails.
 
 ### Cranelift
 
-Cranelift is the default backend for development builds, set in
-`.cargo/config.toml` (`[profile.dev] codegen-backend = "cranelift"`) on the
-nightly pinned in `rust-toolchain.toml`. The release workflow builds on the
-same pinned nightly with LLVM, because the dev profile does not reach the
-release profile. The `lint` recipe runs Whitaker with the LLVM backend, since
-its installer-managed toolchain does not take the Cranelift default, and
-coverage selects LLVM too, since Cranelift cannot instrument coverage. The full
-suite (84 tests) passes under Cranelift.
+The estate standard is LLVM, so LLVM is the default backend here. The Cranelift
+selection in `.cargo/config.toml` is commented out; the
+`[unstable] codegen-backend` key and the `rustc-codegen-cranelift-preview`
+component stay for an opt-in. See the
+[concordat decision record](https://github.com/leynos/concordat/blob/main/docs/adrs/adr-0004-cranelift-is-not-part-of-the-rust-build-standard.md),
+with review due 14 May 2027. An inherited `CARGO_PROFILE_*_CODEGEN_BACKEND`
+variable can still select Cranelift, and Cranelift does not run destructors
+while unwinding, so under an opt-in no test may rely on a caught panic
+releasing a guard. The release workflow builds on the pinned nightly. The
+`lint` recipe runs Whitaker with the LLVM backend, since its installer-managed
+toolchain does not take a Cranelift opt-in, and coverage selects LLVM too,
+since Cranelift cannot instrument coverage.
 
 ## CodeScene coverage and the CV-005 contract
 
