@@ -21,15 +21,15 @@ rustflags = ["-Zthreads=8"]
 [target.'cfg(target_os = "linux")']
 rustflags = ["-Zthreads=8", "-Clink-arg=-fuse-ld=mold"]
 
-# The same table enables the codegen-backend key that selects Cranelift for
-# development builds. Stable Cargo refuses both, so only the pinned nightly may
+# The same table enables the codegen-backend key that allows an opt-in
+# Cranelift selection. Stable Cargo refuses both, so only the pinned nightly may
 # read this file.
 [unstable]
 embed-metadata = false
 codegen-backend = true
 
-# Cranelift trades runtime performance for compile speed, so it applies to the
-# dev profile only. Release builds keep LLVM, and coverage selects LLVM
-# explicitly.
-[profile.dev]
-codegen-backend = "cranelift"
+# Development builds use LLVM, the estate standard.
+# Cranelift disabled estate-wide on 14 November 2026 (concordat ADR; review 14 May 2027). Uncomment to opt back in.
+# [profile.dev]
+# codegen-backend = "cranelift"
+# One-off opt-in: --config 'profile.dev.codegen-backend="cranelift"'

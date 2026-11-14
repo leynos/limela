@@ -81,8 +81,7 @@ jobs:
             ${{ runner.os }}-cargo-
       - name: Build release binary
         # The release builds on the nightly pinned in rust-toolchain.toml with
-        # the LLVM backend: [profile.dev]'s Cranelift setting does not reach the
-        # release profile. It takes the platform linker and not the build
+        # the LLVM backend, the estate standard. It takes the platform linker and not the build
         # standard's flags: an assigned RUSTFLAGS displaces every `rustflags`
         # table in .cargo/config.toml (cross passes it into the container).
         env:
