@@ -166,8 +166,8 @@
   2. Document the new abstraction's intended scope and re-use policy
      (ownership boundaries, permitted call-sites, and composition rules).
   3. Record the decision in the appropriate architecture, design, or
-     developers-guide document using `docs/contents.md` as the index to select
-     the correct location.
+     developers-guide document in the `docs/` directory to select the correct
+     location.
 - **Post-Commit Review:** After committing a functional change or bug fix (that
   meets all quality gates), review the changed code and surrounding areas using
   the heuristics above.
@@ -237,6 +237,11 @@ project:
 
     running the all-target, all-feature test suite with Rust warnings denied.
     This target does not run doctests (`cargo test --doc`).
+  - Build flags: Clippy and tests compose the development build flags
+    (`-Zthreads=8` and, on Linux, `-Clink-arg=-fuse-ld=mold`) onto any
+    inherited `RUSTFLAGS`, and tests also add `-D warnings`. Whitaker instead
+    sets `RUSTFLAGS="-D warnings"` and forces the LLVM codegen backend. Make
+    variables can override these defaults.
   - Use `make fmt` (`cargo fmt --all`, plus Markdown formatting) to apply
     formatting fixes reported by the formatter check.
 - Clippy warnings MUST be disallowed.
