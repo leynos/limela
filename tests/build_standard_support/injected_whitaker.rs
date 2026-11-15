@@ -72,29 +72,45 @@ fn whitaker_test_filter_make(_target: Target<'_>, host: Host) -> Result<String, 
 fn a_direct_whitaker_command_must_stay_isolated_from_the_development_flags() -> Result<(), String> {
     let pin = Pin::Nightly;
     for host in [Host::Linux, Host::Darwin] {
-        let (isolated, _) = development_problems(isolated_whitaker_make, host, pin)?;
-        ensure(
-            isolated.is_empty(),
-            &format!("an isolated Whitaker command raised {isolated:?}"),
-        )?;
-        let route = whitaker_route_problems(isolated_whitaker_make, host)?;
-        ensure(
-            route.is_empty(),
-            &format!("an isolated Whitaker route raised {route:?}"),
-        )?;
-        let (filtered, _) = development_problems(whitaker_test_filter_make, host, pin)?;
-        ensure(
-            filtered.is_empty(),
-            &format!("a Cargo test filter naming Whitaker raised {filtered:?}"),
-        )?;
-        let missing = whitaker_route_problems(no_whitaker_make, host)?;
-        ensure(!missing.is_empty(), "a lint recipe without Whitaker passed")?;
-        let bare = whitaker_route_problems(bare_whitaker_make, host)?;
-        ensure(
-            !bare.is_empty(),
-            "a bare Whitaker command passed the route check",
-        )?;
+        ensure_isolated_whitaker_accepted(host, pin)?;
+        ensure_whitaker_route_enforced(host)?;
     }
+    ensure_contaminated_whitaker_refused(pin)
+}
+
+/// Checks that an isolated Whitaker command and a Cargo test filter naming Whitaker raise nothing.
+fn ensure_isolated_whitaker_accepted(host: Host, pin: Pin) -> Result<(), String> {
+    let (isolated, _) = development_problems(isolated_whitaker_make, host, pin)?;
+    ensure(
+        isolated.is_empty(),
+        &format!("an isolated Whitaker command raised {isolated:?}"),
+    )?;
+    let (filtered, _) = development_problems(whitaker_test_filter_make, host, pin)?;
+    ensure(
+        filtered.is_empty(),
+        &format!("a Cargo test filter naming Whitaker raised {filtered:?}"),
+    )
+}
+
+/// Checks that an isolated Whitaker route passes and a missing or bare one is refused.
+fn ensure_whitaker_route_enforced(host: Host) -> Result<(), String> {
+    let route = whitaker_route_problems(isolated_whitaker_make, host)?;
+    ensure(
+        route.is_empty(),
+        &format!("an isolated Whitaker route raised {route:?}"),
+    )?;
+    let missing = whitaker_route_problems(no_whitaker_make, host)?;
+    ensure(!missing.is_empty(), "a lint recipe without Whitaker passed")?;
+    let bare = whitaker_route_problems(bare_whitaker_make, host)?;
+    ensure(
+        !bare.is_empty(),
+        "a bare Whitaker command passed the route check",
+    )
+}
+
+/// Checks that Whitaker commands carrying the development flags, inheriting the caller's flags or
+/// dropping the warning policy are each refused with the matching reason.
+fn ensure_contaminated_whitaker_refused(pin: Pin) -> Result<(), String> {
     let refused = [
         (
             contaminated_whitaker_make as MakeRunner,
