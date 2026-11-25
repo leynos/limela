@@ -16,13 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Setup Rust
-        uses: leynos/shared-actions/.github/actions/setup-rust@29b1772534b37ea996c24a2ccb462e717073155d
+        uses: leynos/shared-actions/.github/actions/setup-rust@b50fd9a2b2f2a096d64fe44593805dd2da7f9148
         with:
           install-mold: 'true'
       - name: Install mdtablefix
         # `make check-fmt` runs `mdtablefix --check --git`; 0.6.0 is the
         # first release with `--check` and `--git`.
-        uses: leynos/shared-actions/.github/actions/install-mdtablefix@29b1772534b37ea996c24a2ccb462e717073155d
+        uses: leynos/shared-actions/.github/actions/install-mdtablefix@b50fd9a2b2f2a096d64fe44593805dd2da7f9148
         with:
           version: "0.6.1"
 
@@ -35,7 +35,7 @@ jobs:
         with:
           globs: '**/*.md'
       - name: Install Whitaker
-        uses: leynos/shared-actions/.github/actions/install-whitaker@29b1772534b37ea996c24a2ccb462e717073155d
+        uses: leynos/shared-actions/.github/actions/install-whitaker@b50fd9a2b2f2a096d64fe44593805dd2da7f9148
         with:
           cranelift: true
       - name: Lint
@@ -55,7 +55,7 @@ jobs:
           # linker. Assigning RUSTFLAGS displaces every `rustflags` table in
           # .cargo/config.toml.
           RUSTFLAGS: -D warnings
-        uses: leynos/shared-actions/.github/actions/generate-coverage@29b1772534b37ea996c24a2ccb462e717073155d
+        uses: leynos/shared-actions/.github/actions/generate-coverage@b50fd9a2b2f2a096d64fe44593805dd2da7f9148
         with:
           allow-no-tests: 'true'
           output-path: lcov.info
