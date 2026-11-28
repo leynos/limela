@@ -42,6 +42,12 @@ jobs:
         uses: leynos/shared-actions/.github/actions/install-whitaker@bd052c68a4792e92c3272fb1b6ea3b594f3ab7f3
         with:
           cranelift: true
+      - name: Set up uv for the YAML lint tools
+        uses: astral-sh/setup-uv@c5680ec91f7b9b91406fab4ded5d45245abf7b67
+        with:
+          enable-cache: false
+      - name: Install the YAML lint tools
+        uses: leynos/shared-actions/.github/actions/install-yaml-lint@bd052c68a4792e92c3272fb1b6ea3b594f3ab7f3
       - name: Lint
         run: make lint
       - name: Setup uv
