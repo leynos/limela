@@ -72,8 +72,8 @@ target/%/$(APP): ## Build binary in debug or release mode
 	$(if $(findstring release,$(@)),RUSTFLAGS="$${RUSTFLAGS-}",RUSTFLAGS="$${RUSTFLAGS:+$$RUSTFLAGS }$(STANDARD_RUSTFLAGS)") $(CARGO) build $(BUILD_JOBS) $(if $(findstring release,$(@)),--release) --bin $(APP)
 
 # The repository's only Python is the CV-005 workflow contract test under
-# tests/. Interrogate scans each target recursively, subject to its default
-# exclusions.
+# tests/ and the vendored uv helper under scripts/. Interrogate scans each
+# target recursively, subject to its default exclusions.
 INTERROGATE_VERSION ?= 1.7.0
 INTERROGATE_TARGETS ?= scripts tests
 # Level 2 prints a MISSED row per undocumented definition, which the
